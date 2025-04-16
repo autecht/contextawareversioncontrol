@@ -3,8 +3,14 @@ import { exec } from "child_process";
 
 
 interface CommitViewer {
-  getViewContent: (stylesheetUri: vscode.Uri, commitMessage: string) => string,
-  showCommitsCommand: vscode.Disposable;
+  getViewContent: (stylesheetUri: vscode.Uri, commits: CommitInfo[]) => string,
+  showCommitsCommand: vscode.Disposable,
+  getCommitInfo: (stdout: string) => CommitInfo[],
+}
+
+interface CommitInfo{
+  hash: string;
+  message: string;
 }
 
 
@@ -31,7 +37,7 @@ export function getCommitViewer(context: vscode.ExtensionContext) {
           );
           const stylesheetUri = panel.webview.asWebviewUri(stylesheetPath);
     
-          const command = "git log -1 --pretty=%B";
+          const command = 'git log --pretty="%h "%s';
           const workspaceFolders = vscode.workspace.workspaceFolders;
           if (!workspaceFolders) {
             return;
@@ -44,8 +50,8 @@ export function getCommitViewer(context: vscode.ExtensionContext) {
               if (error) {
                 return;
               }
-    
-              panel.webview.html = viewer.getViewContent(stylesheetUri, stdout);
+              const commits = viewer.getCommitInfo(stdout);
+              panel.webview.html = viewer.getViewContent(stylesheetUri, commits);
             }
           );
         }
@@ -57,7 +63,7 @@ export function getCommitViewer(context: vscode.ExtensionContext) {
        * @param stdout output of command used for getting commit message
        * @returns html string to be displayed in webview
        */
-      getViewContent: (stylesheetUri: vscode.Uri, commitMessage: string) => {
+      getViewContent: (stylesheetUri: vscode.Uri, commits:CommitInfo[]) => {
         return `<!DOCTYPE html>
         <html lang="en">
           <head>
@@ -67,12 +73,31 @@ export function getCommitViewer(context: vscode.ExtensionContext) {
             <title>Commit Viewer</title>
           </head>
           <body>
-            <div class="commit-viewer">
-              <h1>Relevant Commits</h1>
-              <pre>${commitMessage}</pre>
-            </div>
+            <h1>Relevant Commits</h1>`
+            + 
+            commits.map(commit => {
+              return `<div class ="commit-viewer"> 
+                        <pre>${commit.hash} ${commit.message}</pre>
+                      </div>`;
+            }).join("")              
+            
+            + `</div>
           </body>
         </html>`;
+      },
+      /**
+       * 
+       * @param stdout output of command used for getting commit message
+       * @returns array of commit objects containing hash and message
+       */
+      getCommitInfo: (stdout: string) => {
+        const commitLines = stdout.split("\n").filter(line => line.trim() !== "");
+        const commits: CommitInfo[] = commitLines.map(line => {
+          const [hash, ...messageParts] = line.split(" ");
+          const message = messageParts.join(" ");
+          return { hash, message };
+        });
+        return commits;
       },
   };
   return viewer;
