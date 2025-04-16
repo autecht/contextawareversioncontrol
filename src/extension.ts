@@ -12,19 +12,6 @@ export function activate(context: vscode.ExtensionContext) {
     'Congratulations, your extension "contextawareversioncontrol" is now active!'
   );
 
-  // The command has been defined in the package.json file
-  // Now provide the implementation of the command with registerCommand
-  // The commandId parameter must match the command field in package.json
-  const disposable = vscode.commands.registerCommand(
-    "contextawareversioncontrol.helloWorld",
-    () => {
-      // The code you place here will be executed every time your command is executed
-      // Display a message box to the user
-      vscode.window.showInformationMessage(
-        "Hello World from ContextAwareVersionControl!"
-      );
-    }
-  );
 
   const showCommitsCommand = vscode.commands.registerCommand(
     "contextawareversioncontrol.showCommits",
@@ -40,12 +27,12 @@ export function activate(context: vscode.ExtensionContext) {
           ],
         }
       );
-      const stylePath = vscode.Uri.joinPath(
+      const stylesheetPath = vscode.Uri.joinPath(
         context.extensionUri,
         "media",
         "commit-view.css"
       );
-      const styleUri = panel.webview.asWebviewUri(stylePath);
+      const stylesheetUri = panel.webview.asWebviewUri(stylesheetPath);
 
       const command = "git log -1 --pretty=%B";
       const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -61,10 +48,9 @@ export function activate(context: vscode.ExtensionContext) {
             return;
           }
 
-					panel.webview.html = getCommitViewContent(styleUri, stdout);
+					panel.webview.html = getCommitViewContent(stylesheetUri, stdout);
         }
       );
-      
     }
   );
 
@@ -72,6 +58,14 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(showCommitsCommand);
 }
 
+
+/**
+ * 
+ * @param stylesheetSrc uri of stylesheet used by webview
+
+ * @param stdout output of command used for getting commit message
+ * @returns html string to be displayed in webview
+ */
 function getCommitViewContent(stylesheetSrc: vscode.Uri, stdout: string) {
   return `<!DOCTYPE html>
 			<html lang="en">

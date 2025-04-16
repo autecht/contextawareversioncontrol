@@ -14,10 +14,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "contextawareversioncontrol.helloWorld",
-        "title": "Hello World"
-      },
-      {
         "command": "contextawareversioncontrol.showCommits",
         "title": "Show Relevant Commits",
         "category": ""
