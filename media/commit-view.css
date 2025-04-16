@@ -1,3 +1,4 @@
-.commit-viewer{
-  background-color: aqua;
+.single-commit{
+  background-color: rgb(237, 212, 172);
+  width: fit-content;
 }

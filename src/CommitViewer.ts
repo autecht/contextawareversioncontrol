@@ -3,7 +3,7 @@ import { exec } from "child_process";
 
 
 interface CommitViewer {
-  getViewContent: (stylesheetUri: vscode.Uri, commits: CommitInfo[]) => string,
+  getViewContent: (stylesheetUri: vscode.Uri, scriptUri: vscode.Uri, commits: CommitInfo[]) => string,
   showCommitsCommand: vscode.Disposable,
   getCommitInfo: (stdout: string) => CommitInfo[],
 }
@@ -36,6 +36,13 @@ export function getCommitViewer(context: vscode.ExtensionContext) {
             "commit-view.css"
           );
           const stylesheetUri = panel.webview.asWebviewUri(stylesheetPath);
+
+          const scriptPath = vscode.Uri.joinPath(
+            context.extensionUri,
+            "media",
+            "commit-view.js"
+          );
+          const scriptUri = panel.webview.asWebviewUri(scriptPath);
     
           const command = 'git log --pretty="%h "%s';
           const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -51,7 +58,7 @@ export function getCommitViewer(context: vscode.ExtensionContext) {
                 return;
               }
               const commits = viewer.getCommitInfo(stdout);
-              panel.webview.html = viewer.getViewContent(stylesheetUri, commits);
+              panel.webview.html = viewer.getViewContent(stylesheetUri, scriptUri, commits);
             }
           );
         }
@@ -63,20 +70,22 @@ export function getCommitViewer(context: vscode.ExtensionContext) {
        * @param stdout output of command used for getting commit message
        * @returns html string to be displayed in webview
        */
-      getViewContent: (stylesheetUri: vscode.Uri, commits:CommitInfo[]) => {
+      getViewContent: (stylesheetUri: vscode.Uri, scriptUri: vscode.Uri, commits:CommitInfo[]) => {
         return `<!DOCTYPE html>
         <html lang="en">
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link href="${stylesheetUri}" rel="stylesheet">
+            <script src="${scriptUri}"></script>
             <title>Commit Viewer</title>
           </head>
           <body>
-            <h1>Relevant Commits</h1>`
+            <h1>Relevant Commits</h1>
+            <div class="commit-list">`
             + 
             commits.map(commit => {
-              return `<div class ="commit-viewer"> 
+              return `<div class ="single-commit" onclick="alertOnCommitClick('${commit.hash}')"> 
                         <pre>${commit.hash} ${commit.message}</pre>
                       </div>`;
             }).join("")              
