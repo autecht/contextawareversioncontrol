@@ -1,5 +1,12 @@
-console.log("Hello there");
+const vscode = acquireVsCodeApi();
 
-function alertOnCommitClick(hash) {
+
+
+
+function openDiffFile(hash) {
   console.log(hash);
+  vscode.postMessage({
+    command: 'openDiffFile',
+    hash: hash
+  });
 }

@@ -30,6 +30,63 @@ export function getCommitViewer(context: vscode.ExtensionContext) {
               ],
             }
           );
+
+          panel.webview.onDidReceiveMessage(
+            (message) => {
+              if (message.command === "openDiffFile") {
+                console.log("Message received");
+
+                const workspaceFolders = vscode.workspace.workspaceFolders;
+                if (!workspaceFolders) {
+                  return;
+                }
+                const workspaceRoot = workspaceFolders[0].uri.fsPath;
+                exec(
+                  "git diff-tree --no-commit-id --name-only -r " + message.hash,
+                  { cwd: workspaceRoot },
+                  (error, stdout, stderr) => {
+                    if (error) {
+                      return;
+                    }
+                    console.log("stdout", stdout);
+                    const filesChanged = stdout.split("\n").filter((file) => file.trim() !== "");
+                    const workspaceFolders = vscode.workspace.workspaceFolders;
+                    if (!workspaceFolders) {
+                      return;
+                    }
+                    const workspaceRoot = workspaceFolders[0];
+                    
+                    for (const file of filesChanged) {
+
+                      const absolute = vscode.Uri.joinPath(workspaceRoot.uri, file);
+                      // For files in the repo root
+                      const params = {
+                        path: absolute.fsPath,
+                        ref: message.hash,
+                      };
+                      const path = absolute.path;
+
+                      const gitUri = absolute.with({ scheme: 'git', path, query: JSON.stringify(params)});
+
+                      // Open diff view
+                      vscode.commands.executeCommand('vscode.diff', gitUri, absolute, "Test");
+                    }
+
+                  }
+                );
+                // const filePath = message.filePath;
+                // const workspaceFolders = vscode.workspace.workspaceFolders;
+                // if (!workspaceFolders) {
+                //   return;
+                // }
+                // const workspaceRoot = workspaceFolders[0].uri.fsPath;
+                // const fullPath = `${workspaceRoot}/${filePath}`;
+                // vscode.workspace.openTextDocument(fullPath).then((doc) => {
+                //   vscode.window.showTextDocument(doc);
+                // });
+              }
+            }
+          );
           const stylesheetPath = vscode.Uri.joinPath(
             context.extensionUri,
             "media",
@@ -85,7 +142,7 @@ export function getCommitViewer(context: vscode.ExtensionContext) {
             <div class="commit-list">`
             + 
             commits.map(commit => {
-              return `<div class ="single-commit" onclick="alertOnCommitClick('${commit.hash}')"> 
+              return `<div class ="single-commit" onclick="openDiffFile('${commit.hash}')"> 
                         <pre>${commit.hash} ${commit.message}</pre>
                       </div>`;
             }).join("")              

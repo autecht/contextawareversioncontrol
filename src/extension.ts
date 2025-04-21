@@ -14,10 +14,10 @@ export function activate(context: vscode.ExtensionContext) {
 
   const commitViewer = getCommitViewer(context);
   const showCommitsCommand = commitViewer.showCommitsCommand;
+  context.subscriptions.push(showCommitsCommand);
+
 
   
-
-  context.subscriptions.push(showCommitsCommand);
 }
 
 // This method is called when your extension is deactivated
