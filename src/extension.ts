@@ -1,8 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
-import { exec } from "child_process";
-import { getCommitViewer } from "./CommitViewer";
+import { CommitViewer } from "./CommitViewer";
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -12,11 +11,8 @@ export function activate(context: vscode.ExtensionContext) {
     'Congratulations, your extension "contextawareversioncontrol" is now active!'
   );
 
-  const commitViewer = getCommitViewer(context);
-  const showCommitsCommand = commitViewer.showCommitsCommand;
-  context.subscriptions.push(showCommitsCommand);
-
-
+  const commitViewer = new CommitViewer(context);
+  context.subscriptions.push(commitViewer.showCommitsCommand);
   
 }
 
