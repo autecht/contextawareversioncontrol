@@ -8,11 +8,131 @@ interface CommitInfo {
   message: string;
 }
 
+
+
+
+class CommandExecutor {
+  context: vscode.ExtensionContext;
+  workspaceRoot: vscode.WorkspaceFolder | undefined;
+  commitViewer: CommitViewer;
+  constructor(context:vscode.ExtensionContext, commitViewer: CommitViewer) {
+      this.commitViewer = commitViewer;
+      this.context = context;
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders) {
+        return;
+      }
+      const workspaceRoot = workspaceFolders[0];
+      this.workspaceRoot = workspaceRoot;
+
+    }
+
+  executeDiffCommand(message: CommitInfo) {
+    exec(
+              "git diff-tree --no-commit-id --name-only -r " + message.hash,
+              { cwd: this.workspaceRoot?.uri.fsPath },
+              (error, stdout, stderr) => {
+                if (error) {
+                  return;
+                }
+                console.log("stdout", stdout);
+                const filesChanged = stdout
+                  .split("\n")
+                  .filter((file) => file.trim() !== "");
+                
+                if (!this.workspaceRoot) {
+                  return;
+                }
+
+                for (const file of filesChanged) {
+                  const absolute = vscode.Uri.joinPath(this.workspaceRoot.uri, file);
+                  // For files in the repo root
+                  const params = {
+                    path: absolute.fsPath,
+                    ref: message.hash,
+                  };
+                  const path = absolute.path;
+
+                  const gitUri = absolute.with({
+                    scheme: "git",
+                    path,
+                    query: JSON.stringify(params),
+                  });
+
+                  // Open diff view
+                  vscode.commands.executeCommand(
+                    "vscode.diff",
+                    gitUri,
+                    absolute,
+                    `Diff ${file}: ${message.hash} -> present`
+                  );
+                }
+              }
+            );
+   }
+
+   executeLogCommand(panel: vscode.WebviewPanel) {
+        const command = 'git log --pretty="%h "%s';
+        const stylesheetPath = vscode.Uri.joinPath(
+          this.context.extensionUri,
+          "media",
+          "commit-view.css"
+        );
+        const stylesheetUri = panel.webview.asWebviewUri(stylesheetPath);
+
+        const scriptPath = vscode.Uri.joinPath(
+          this.context.extensionUri,
+          "media",
+          "commit-view.js"
+        );
+        const scriptUri = panel.webview.asWebviewUri(scriptPath);
+
+        
+        
+        const workspaceRootString = this.workspaceRoot?.uri.fsPath;
+        if (!workspaceRootString) {return;}
+        exec(command, { cwd: workspaceRootString }, (error, stdout, stderr) => {
+          if (error) {
+            return;
+          }
+          const commits = this.getCommitInfo(stdout);
+          panel.webview.html = this.commitViewer.getViewContent(
+            stylesheetUri,
+            scriptUri,
+            commits
+          );
+        });
+   
+   }
+
+  /**
+   * Parses the output of the git log command to extract commit information.
+    * @param stdout The output of the git log command.
+    * @returns An array of CommitInfo objects containing the commit hash and message.
+    */
+   getCommitInfo(stdout: string): CommitInfo[] {
+      const commitLines = stdout
+        .split("\n")
+        .filter((line) => line.trim() !== "");
+      const commits: CommitInfo[] = commitLines.map((line) => {
+        const [hash, ...messageParts] = line.split(" ");
+        const message = messageParts.join(" ");
+        return { hash, message };
+      });
+      return commits;
+  }
+}
+
+
+
 class CommitViewer {
 
   showCommitsCommand: vscode.Disposable;
+  commandExecutor: CommandExecutor;
 
   constructor(context: vscode.ExtensionContext) {
+
+    this.commandExecutor = new CommandExecutor(context, this);
     this.showCommitsCommand = vscode.commands.registerCommand(
       "contextawareversioncontrol.showCommits",
       () => {
@@ -37,95 +157,15 @@ class CommitViewer {
               return;
             }
             const workspaceRoot = workspaceFolders[0].uri.fsPath;
-            exec(
-              "git diff-tree --no-commit-id --name-only -r " + message.hash,
-              { cwd: workspaceRoot },
-              (error, stdout, stderr) => {
-                if (error) {
-                  return;
-                }
-                console.log("stdout", stdout);
-                const filesChanged = stdout
-                  .split("\n")
-                  .filter((file) => file.trim() !== "");
-                const workspaceFolders = vscode.workspace.workspaceFolders;
-                if (!workspaceFolders) {
-                  return;
-                }
-                const workspaceRoot = workspaceFolders[0];
-
-                for (const file of filesChanged) {
-                  const absolute = vscode.Uri.joinPath(workspaceRoot.uri, file);
-                  // For files in the repo root
-                  const params = {
-                    path: absolute.fsPath,
-                    ref: message.hash,
-                  };
-                  const path = absolute.path;
-
-                  const gitUri = absolute.with({
-                    scheme: "git",
-                    path,
-                    query: JSON.stringify(params),
-                  });
-
-                  // Open diff view
-                  vscode.commands.executeCommand(
-                    "vscode.diff",
-                    gitUri,
-                    absolute,
-                    `Diff ${file}: ${message.hash} -> present`
-                  );
-                }
-              }
-            );
+            this.commandExecutor.executeDiffCommand(message);
+            
           }
         });
-        const stylesheetPath = vscode.Uri.joinPath(
-          context.extensionUri,
-          "media",
-          "commit-view.css"
-        );
-        const stylesheetUri = panel.webview.asWebviewUri(stylesheetPath);
-
-        const scriptPath = vscode.Uri.joinPath(
-          context.extensionUri,
-          "media",
-          "commit-view.js"
-        );
-        const scriptUri = panel.webview.asWebviewUri(scriptPath);
-
-        const command = 'git log --pretty="%h "%s';
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders) {
-          return;
-        }
-        const workspaceRoot = workspaceFolders[0].uri.fsPath;
-        exec(command, { cwd: workspaceRoot }, (error, stdout, stderr) => {
-          if (error) {
-            return;
-          }
-          const commits = this.getCommitInfo(stdout);
-          panel.webview.html = this.getViewContent(
-            stylesheetUri,
-            scriptUri,
-            commits
-          );
-        });
+        this.commandExecutor.executeLogCommand(panel);
       }
     );
   }
-  getCommitInfo(stdout: string): CommitInfo[] {
-      const commitLines = stdout
-        .split("\n")
-        .filter((line) => line.trim() !== "");
-      const commits: CommitInfo[] = commitLines.map((line) => {
-        const [hash, ...messageParts] = line.split(" ");
-        const message = messageParts.join(" ");
-        return { hash, message };
-      });
-      return commits;
-  }
+  
 
   /**
        * 
