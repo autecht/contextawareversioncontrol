@@ -13,6 +13,31 @@ export function activate(context: vscode.ExtensionContext) {
 
   const commitViewer = new CommitViewer(context);
   context.subscriptions.push(commitViewer.showCommitsCommand);
+
+  const hoverProvider = vscode.languages.registerHoverProvider({ scheme: 'file' }, {
+    provideHover(document, position, token) {
+      const line = position.line;
+
+      const markdown = new vscode.MarkdownString(
+        `[🔍 View Commit](command:extension.showCommit?${encodeURIComponent(JSON.stringify([line]))})`
+      );
+      markdown.isTrusted = true;
+
+      return new vscode.Hover(markdown);
+    }
+  });
+
+  const showCommitCommand = vscode.commands.registerCommand(
+    "extension.showCommit",
+    () => {
+      vscode.window.showInformationMessage("Commit clicked!");
+    }
+  );
+
+  
+ 
+
+  context.subscriptions.push(hoverProvider, showCommitCommand);
   
 }
 

@@ -9,13 +9,25 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:extension.showCommit",
+    "onLanguage:plaintext",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage: java",
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "contextawareversioncontrol.showCommits",
         "title": "Show Relevant Commits",
+        "category": ""
+      },
+      {
+        "command": "contextawareversioncontrol.showCommit",
+        "title": "Get Commit Resonsible for Line",
         "category": ""
       }
     ]
