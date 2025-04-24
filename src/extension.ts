@@ -2,6 +2,9 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import { CommitViewer } from "./CommitViewer";
+import { exec } from "child_process";
+import { CommandExecutor } from "./CommitViewer";
+import * as util from 'util';
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -13,31 +16,33 @@ export function activate(context: vscode.ExtensionContext) {
 
   const commitViewer = new CommitViewer(context);
   context.subscriptions.push(commitViewer.showCommitsCommand);
+  context.subscriptions.push(commitViewer.showCommitCommand);
 
   const hoverProvider = vscode.languages.registerHoverProvider({ scheme: 'file' }, {
-    provideHover(document, position, token) {
+    async provideHover(document, position, token) {
       const line = position.line;
-
+      const fileName = document.fileName;
+      
+      const commandExecutor = new CommandExecutor(context, commitViewer);
+      // const {stdout} = await exec(`git blame -L ${line + 1},${line + 1} ${fileName}`, (error, stdout, stderr) => {
+      // });
+      const stdout = await commandExecutor.executeCommand(`git blame -L ${line + 1},${line + 1} "${fileName}"`);
+      const hash = stdout.split(" ")[0];
       const markdown = new vscode.MarkdownString(
-        `[🔍 View Commit](command:extension.showCommit?${encodeURIComponent(JSON.stringify([line]))})`
+        `[🔍 View Commit](command:contextawareversioncontrol.showCommit?${encodeURIComponent(JSON.stringify([hash]))})`
       );
+      markdown.appendMarkdown(`\n\n**Hash:** ${hash}`);
+      
       markdown.isTrusted = true;
 
       return new vscode.Hover(markdown);
     }
   });
 
-  const showCommitCommand = vscode.commands.registerCommand(
-    "extension.showCommit",
-    () => {
-      vscode.window.showInformationMessage("Commit clicked!");
-    }
-  );
-
   
  
 
-  context.subscriptions.push(hoverProvider, showCommitCommand);
+  context.subscriptions.push(hoverProvider);
   
 }
 

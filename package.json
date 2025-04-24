@@ -27,7 +27,7 @@
       },
       {
         "command": "contextawareversioncontrol.showCommit",
-        "title": "Get Commit Resonsible for Line",
+        "title": "Show Specific Commit",
         "category": ""
       }
     ]

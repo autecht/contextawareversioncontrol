@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
 import { exec } from "child_process";
+import * as util from "util";
+
 
 
 
@@ -26,6 +28,13 @@ class CommandExecutor {
       this.workspaceRoot = workspaceRoot;
 
     }
+
+  async executeCommand(command: string):Promise<string> {
+    const promisifiedExec = util.promisify(exec);
+    const output = await promisifiedExec(command, {
+      cwd: this.workspaceRoot?.uri.fsPath,});
+    return output.stdout;
+  }
 
   executeDiffCommand(message: CommitInfo) {
     exec(
@@ -71,8 +80,9 @@ class CommandExecutor {
             );
    }
 
-   executeLogCommand(panel: vscode.WebviewPanel) {
-        const command = 'git log --pretty="%h "%s';
+   executeLogCommand(panel: vscode.WebviewPanel, hash?: string) {
+
+        const command = hash===undefined?'git log --pretty="%h "%s':`git log -n 1 --pretty="%h "%s ${hash}`;
         const stylesheetPath = vscode.Uri.joinPath(
           this.context.extensionUri,
           "media",
@@ -128,6 +138,7 @@ class CommandExecutor {
 class CommitViewer {
 
   showCommitsCommand: vscode.Disposable;
+  showCommitCommand: vscode.Disposable;
   commandExecutor: CommandExecutor;
 
   constructor(context: vscode.ExtensionContext) {
@@ -164,6 +175,40 @@ class CommitViewer {
         this.commandExecutor.executeLogCommand(panel);
       }
     );
+
+    this.showCommitCommand = vscode.commands.registerCommand(
+      "contextawareversioncontrol.showCommit",
+      (hash) => {
+        console.log("showCommit command called");
+        const panel = vscode.window.createWebviewPanel(
+          "showCommit",
+          "Selected Commit",
+          vscode.ViewColumn.One,
+          {
+            enableScripts: true,
+            localResourceRoots: [
+              vscode.Uri.joinPath(context.extensionUri, "media"),
+            ],
+          }
+        );
+
+        panel.webview.onDidReceiveMessage((message) => {
+          if (message.command === "openDiffFile") {
+            console.log("Message received");
+
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (!workspaceFolders) {
+              return;
+            }
+            const workspaceRoot = workspaceFolders[0].uri.fsPath;
+            this.commandExecutor.executeDiffCommand(message);
+            
+          }
+        });
+        this.commandExecutor.executeLogCommand(panel, hash);
+      }
+    );
+
   }
   
 
@@ -208,5 +253,5 @@ class CommitViewer {
 
 
 export { CommitViewer };
-export { CommitInfo };
+  export { CommitInfo, CommandExecutor };
 
