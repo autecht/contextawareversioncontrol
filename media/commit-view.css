@@ -2,3 +2,14 @@
   background-color: rgb(237, 212, 172);
   width: fit-content;
 }
+
+.button{
+  background-color: rgb(253, 146, 64);
+  border: none;
+  padding: 5px 10px;
+  text-align: center;
+  display: inline-block;
+  margin: 4px 2px;
+  cursor: pointer;
+  border-radius: 5%;
+}
