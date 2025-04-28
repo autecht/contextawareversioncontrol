@@ -9,8 +9,10 @@
  * @param {Float[]} mults array representing all the current relevancy settings 
  * in the order of author, time, location. (and any future metrics)
  * 
- * @returns float representing relevancy of current file with 1 being very relevant and 
+ * @returns length 2 array:
+ * index 0: float representing relevancy of current file with 1 being very relevant and 
  * 0 being not relevant at all
+ * index 1: 10x2 array of pairs [filename, line] showing the top 10 most relevant lines
  */
 
 function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, endLine, mults) {
@@ -42,6 +44,8 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     let numAuthorLines = 0;
     let numLocationLines = 0;
 
+    let bestLines = {};
+
     for (let curFile = 0; curFile < standard.length; ++curFile) {
         const fileName = standard[curFile]['name'];
         const lines = standard[curFile]['lines'];
@@ -58,22 +62,30 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
         for (let i = 0; i < filteredLines.length; ++i) {
             let curChange = filteredLines[i];
             let curLine = curChange['ln1'];
+
+            let curLineEval = [0, 0]; //author, location
             
             //author check
             if (curChange['type'] === 'deleted') {
                 //author += blameAuthors[curLine] === authorName ? 1 : 0;
+                //curLineEval[0] += blameAuthors[curLine] === authorName ? 1 : 0;
             }
 
             //location calculation
             if (fileName === userFile) {
                 if (curLine >= startLine && curLine <= endLine) {
                     location += 1;
+                    curLineEval[1] += 1;
                 } else if (curLine < startLine) {
                     location += 1 - ((startLine - curLine) / startLine);
+                    curLineEval[1] += 1 - ((startLine - curLine) / startLine);
                 } else {
                     location += 1 - ((curLine - endLine) / (totalFileLines));
+                    curLineEval[1] += 1 - ((curLine - endLine) / (totalFileLines));
                 }
             }
+
+            bestLines[fileName + ":" + curLine] = Math.sqrt(curLineEval[0]**2 + curLineEval[1]**2) / Math.sqrt(2);
         }
     }
 
@@ -85,7 +97,16 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     //standard L2 distance normalized between 1 (close -> very relevant) and 0 (far -> irrelevant)
     const dist = Math.sqrt(relevancy[0]**2 + relevancy[1]**2 + relevancy[2]**2) / Math.sqrt(3);
 
-    return dist;
+    //sort dictionary
+    var items = Object.keys(bestLines).map(function(key) {
+        return [key, bestLines[key]];
+    });
+
+    items.sort(function(first, second) {
+        return second[1] - first[1];
+    });
+
+    return [dist, items.slice(0, 10)];
 }
 
 /**
