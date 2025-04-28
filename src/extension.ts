@@ -2,9 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import { CommitViewer } from "./CommitViewer";
-import { exec } from "child_process";
-import { CommandExecutor } from "./CommitViewer";
-import * as util from 'util';
+import { CommandExecutor } from "./CommandExecutor";
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
