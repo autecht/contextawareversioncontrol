@@ -10,9 +10,10 @@
  * in the order of author, time, location. (and any future metrics)
  * 
  * @returns length 2 array:
- * index 0: float representing relevancy of current file with 1 being very relevant and 
- * 0 being not relevant at all
- * index 1: 10x2 array of pairs [filename, line] showing the top 10 most relevant lines
+ * index 0: float representing relevancy of current commit 
+ * (over all the files changed) with 1 being very relevant and 0 being not relevant at all
+ * index 1: Length 10 array of pairs showing the top 10 most relevant lines out of 
+ * all the lines changed
  */
 
 function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, endLine, mults) {
@@ -48,6 +49,7 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
 
     for (let curFile = 0; curFile < standard.length; ++curFile) {
         const fileName = standard[curFile]['name'];
+        const fileContent = standard[curFile];
         const lines = standard[curFile]['lines'];
         const filteredLines = lines.filter(line => line.type !== 'normal');
 
@@ -62,7 +64,7 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
         for (let i = 0; i < filteredLines.length; ++i) {
             let curChange = filteredLines[i];
             let curLine = curChange['ln1'];
-
+            let lineContent = curChange['text'];
             let curLineEval = [0, 0]; //author, location
             
             //author check
@@ -85,7 +87,7 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
                 }
             }
 
-            bestLines[fileName + ":" + curLine] = Math.sqrt(curLineEval[0]**2 + curLineEval[1]**2) / Math.sqrt(2);
+            bestLines[lineContent] = Math.sqrt(curLineEval[0]**2 + curLineEval[1]**2) / Math.sqrt(2);
         }
     }
 
