@@ -67,7 +67,37 @@ class CommitViewer {
           "Selected Commit"
         );
         panel.webview.onDidReceiveMessage(this.handleMessage);
-        this.commandExecutor.executeLogCommand(panel, hash);
+        const stylesheetPath = vscode.Uri.joinPath(
+          context.extensionUri,
+          "media",
+          "commit-view.css"
+        );
+        const stylesheetUri = panel.webview.asWebviewUri(stylesheetPath);
+
+        const scriptPath = vscode.Uri.joinPath(
+          context.extensionUri,
+          "media",
+          "commit-view.js"
+        );
+        const scriptUri = panel.webview.asWebviewUri(scriptPath);
+        this.commandExecutor
+          .executeLogCommand(panel, hash)
+          .then((commits: CommitInfo[]) => {
+
+            // TODO: change logic to get relevant commits from findRelevancy()
+            const relevantLines = commits.map((commit) => {
+              return Array.from({ length: 11 }, (_, i) => i + 10).map((i)=> {
+                return ["./nachos/threads/KThread.java", i%2===0?`+      "resolved": "https://registry.npmjs.org/diffparser/-/diffparser-2.0.1.tgz",`:`-    "typescript": "^5.8.2",`];
+            });
+            });
+
+            panel.webview.html = this.getViewContent(
+              stylesheetUri,
+              scriptUri,
+              commits,
+              relevantLines
+            );
+          });
       }
     );
   }
@@ -126,6 +156,8 @@ class CommitViewer {
     commits: CommitInfo[],
     relevantLines: string[][][]
   ): string {
+    // TODO: line content seems to be trimmed in the middle where there are multiple spaces
+    console.log("Relevant lines: ", relevantLines[0]);
     return (
       `<!DOCTYPE html>
         <html lang="en">
@@ -151,7 +183,7 @@ class CommitViewer {
                             const backgroundColor = isDeletion ? "red" : "green";
                             return `
                               <p class="relevant-line ${backgroundColor}-background"> 
-                              <span class="line-label">${line[0]}: </span>${line[1]}
+                              <span class="line-label">${line[0]}: </span>${line[1]} 
                             </p>`;
                         }).join("") 
                         +`</div>
