@@ -1,3 +1,5 @@
+
+
 .single-commit{
   background-color: rgb(237, 212, 172);
   width: fit-content;
@@ -12,4 +14,33 @@
   margin: 4px 2px;
   cursor: pointer;
   border-radius: 5%;
+}
+
+.relevant-lines {
+  margin: 10px;
+  background-color: rgb(233, 233, 233);
+  color: black;
+  padding: 20px;
+  border-radius: 5%;
+  display: flex;
+  flex-direction: column;
+}
+
+.relevant-line {
+  padding-left:5px;
+  padding-right: 5px;
+  margin:0px;
+}
+
+.red-background{
+  background-color: rgb(255, 130, 130);
+}
+.green-background{
+  background-color: rgb(136, 191, 136);
+}
+
+.line-label {
+  font-weight: bold;
+  margin-right: 5px;
+  background-color: rgb(233, 233, 233);
 }

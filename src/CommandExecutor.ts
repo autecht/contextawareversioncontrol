@@ -84,33 +84,18 @@ class CommandExecutor {
     }
   }
 
-  async executeLogCommand(panel: vscode.WebviewPanel, hash?: string) {
+  async executeLogCommand(panel: vscode.WebviewPanel, hash?: string): Promise<CommitInfo[]> {
     const command =
       hash === undefined
         ? 'git log --pretty="%h "%s'
         : `git log -n 1 --pretty="%h "%s ${hash}`;
-    const stylesheetPath = vscode.Uri.joinPath(
-      this.context.extensionUri,
-      "media",
-      "commit-view.css"
-    );
-    const stylesheetUri = panel.webview.asWebviewUri(stylesheetPath);
-
-    const scriptPath = vscode.Uri.joinPath(
-      this.context.extensionUri,
-      "media",
-      "commit-view.js"
-    );
-    const scriptUri = panel.webview.asWebviewUri(scriptPath);
+    
 
     const output = await this.executeCommand(command);
     const commits = this.getCommitInfo(output);
+    return commits;
 
-    panel.webview.html = this.commitViewer.getViewContent(
-      stylesheetUri,
-      scriptUri,
-      commits
-    );
+    
   }
 
   /**
