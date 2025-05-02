@@ -1,6 +1,10 @@
+"use strict";
+const parse = require('git-diff-parser');
+const fs = require('fs');
+
 /**
  * Find relevancy between the current state of the commit and one other commit
- * @param {String} diffFile .diff file for current commit
+ * @param {String} diffFile .diff for commit being checked for relevancy
  * @param {String} userFile current file user is editing
  * @param {Date} commitTime time when commit was made, use "git log -1 --format=%ci [commit hash]""
  * @param {String} authorName author of commit
@@ -30,13 +34,11 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
 
     let relevancy = [0, timePassedScaled, 0]; //[author, time, location]
 
-    //general setup
-    const fs = require('fs');
-    const parse = require('git-diff-parser');
-
     const diff = fs.readFileSync(diffFile, 'utf8');
-
+    
     const parsed = parse(diff);
+
+    console.log(parsed);
 
     //let startLine = 30; //using placeholders as current viewing window for now
     //let endLine = 50;
@@ -134,7 +136,6 @@ function getBlameAuthors(filePath) {
     return authors;
 }
 
-// console.log(findRelevancy("test.diff", "src/CommitViewer.ts", new Date('2025-04-24 20:40:18 -0700'), 'autecht', 30, 50, [0.5, 0.3, 0.8]));
+//console.log(findRelevancy("git-files/test.diff", "src/CommitViewer.ts", new Date('2025-04-24 20:40:18 -0700'), 'autecht', 30, 50, [0.5, 0.3, 0.8]));
 
-export { findRelevancy };
-export { getBlameAuthors };
+module.exports = {findRelevancy, getBlameAuthors};

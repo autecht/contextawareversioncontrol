@@ -1,151 +1,67 @@
-diff --git a/media/commit-view.css b/media/commit-view.css
-index d716242..fc618c2 100644
---- a/media/commit-view.css
-+++ b/media/commit-view.css
-@@ -1,3 +1,4 @@
--.commit-viewer{
--  background-color: aqua;
-+.single-commit{
-+  background-color: rgb(237, 212, 172);
-+  width: fit-content;
- }
-\ No newline at end of file
-diff --git a/media/commit-view.js b/media/commit-view.js
-index e69de29..256ed9d 100644
---- a/media/commit-view.js
-+++ b/media/commit-view.js
-@@ -0,0 +1,5 @@
-+console.log("Hello there");
-+
-+function alertOnCommitClick(hash) {
-+  console.log(hash);
-+}
-\ No newline at end of file
-diff --git a/package-lock.json b/package-lock.json
-index e79adbc..3b7d17a 100644
---- a/package-lock.json
-+++ b/package-lock.json
-@@ -7,6 +7,10 @@
-     "": {
-       "name": "contextawareversioncontrol",
-       "version": "0.0.1",
-+      "dependencies": {
-+        "diffparser": "^2.0.1",
-+        "git-diff-parser": "^1.0.0"
-+      },
-       "devDependencies": {
-         "@types/mocha": "^10.0.10",
-         "@types/node": "20.x",
-@@ -1140,6 +1144,11 @@
-         "node": ">=0.3.1"
-       }
-     },
-+    "node_modules/diffparser": {
-+      "version": "2.0.1",
-+      "resolved": "https://registry.npmjs.org/diffparser/-/diffparser-2.0.1.tgz",
-+      "integrity": "sha512-XBuCzzdLUBJzXTvbonNPv7+AhNkiUyhyiZBSrhKxKYcIXfAcPOVaINviC2vB+bfBa5EopW60CzkBjuwb3jdmiw=="
-+    },
-     "node_modules/eastasianwidth": {
-       "version": "0.2.0",
-       "resolved": "https://registry.npmjs.org/eastasianwidth/-/eastasianwidth-0.2.0.tgz",
-@@ -1593,6 +1602,11 @@
-         "url": "https://github.com/sponsors/sindresorhus"
-       }
-     },
-+    "node_modules/git-diff-parser": {
-+      "version": "1.0.0",
-+      "resolved": "https://registry.npmjs.org/git-diff-parser/-/git-diff-parser-1.0.0.tgz",
-+      "integrity": "sha512-m6I3x7Amb759jXYDITS8M8GfdxV636ni2zV2/RrGtEMuH3CD45hbTFsTaVtmYsTsIQ3x7jibsOcFOqJvP6ptxg=="
-+    },
-     "node_modules/glob": {
-       "version": "10.4.5",
-       "resolved": "https://registry.npmjs.org/glob/-/glob-10.4.5.tgz",
-diff --git a/package.json b/package.json
-index 429ede2..8d9aa34 100644
---- a/package.json
-+++ b/package.json
-@@ -29,14 +29,18 @@
-     "test": "vscode-test"
-   },
-   "devDependencies": {
--    "@types/vscode": "^1.99.0",
-     "@types/mocha": "^10.0.10",
-     "@types/node": "20.x",
-+    "@types/vscode": "^1.99.0",
-     "@typescript-eslint/eslint-plugin": "^8.28.0",
-     "@typescript-eslint/parser": "^8.28.0",
--    "eslint": "^9.23.0",
--    "typescript": "^5.8.2",
-     "@vscode/test-cli": "^0.0.10",
--    "@vscode/test-electron": "^2.4.1"
-+    "@vscode/test-electron": "^2.4.1",
-+    "eslint": "^9.23.0",
-+    "typescript": "^5.8.2"
-+  },
-+  "dependencies": {
-+    "diffparser": "^2.0.1",
-+    "git-diff-parser": "^1.0.0"
-   }
- }
+commit ca8c6515b7ffd45910a845aeb8bd9591a4d34ece
+Author: autecht <autecht@ucsd.edu>
+Date:   Wed Apr 30 12:28:28 2025 -0700
+
+    Fixed bug where Selected Commit Webview was blank
+
 diff --git a/src/CommitViewer.ts b/src/CommitViewer.ts
-index eb8dd85..622e219 100644
+index 376d1f4..f30f790 100644
 --- a/src/CommitViewer.ts
 +++ b/src/CommitViewer.ts
-@@ -3,7 +3,7 @@ import { exec } from "child_process";
- 
- 
- interface CommitViewer {
--  getViewContent: (stylesheetUri: vscode.Uri, commits: CommitInfo[]) => string,
-+  getViewContent: (stylesheetUri: vscode.Uri, scriptUri: vscode.Uri, commits: CommitInfo[]) => string,
-   showCommitsCommand: vscode.Disposable,
-   getCommitInfo: (stdout: string) => CommitInfo[],
- }
-@@ -36,6 +36,13 @@ export function getCommitViewer(context: vscode.ExtensionContext) {
-             "commit-view.css"
-           );
-           const stylesheetUri = panel.webview.asWebviewUri(stylesheetPath);
+@@ -67,7 +67,37 @@ class CommitViewer {
+           "Selected Commit"
+         );
+         panel.webview.onDidReceiveMessage(this.handleMessage);
+-        this.commandExecutor.executeLogCommand(panel, hash);
++        const stylesheetPath = vscode.Uri.joinPath(
++          context.extensionUri,
++          "media",
++          "commit-view.css"
++        );
++        const stylesheetUri = panel.webview.asWebviewUri(stylesheetPath);
 +
-+          const scriptPath = vscode.Uri.joinPath(
-+            context.extensionUri,
-+            "media",
-+            "commit-view.js"
-+          );
-+          const scriptUri = panel.webview.asWebviewUri(scriptPath);
-     
-           const command = 'git log --pretty="%h "%s';
-           const workspaceFolders = vscode.workspace.workspaceFolders;
-@@ -51,7 +58,7 @@ export function getCommitViewer(context: vscode.ExtensionContext) {
-                 return;
-               }
-               const commits = viewer.getCommitInfo(stdout);
--              panel.webview.html = viewer.getViewContent(stylesheetUri, commits);
-+              panel.webview.html = viewer.getViewContent(stylesheetUri, scriptUri, commits);
-             }
-           );
-         }
-@@ -63,20 +70,22 @@ export function getCommitViewer(context: vscode.ExtensionContext) {
-        * @param stdout output of command used for getting commit message
-        * @returns html string to be displayed in webview
-        */
--      getViewContent: (stylesheetUri: vscode.Uri, commits:CommitInfo[]) => {
-+      getViewContent: (stylesheetUri: vscode.Uri, scriptUri: vscode.Uri, commits:CommitInfo[]) => {
-         return `<!DOCTYPE html>
++        const scriptPath = vscode.Uri.joinPath(
++          context.extensionUri,
++          "media",
++          "commit-view.js"
++        );
++        const scriptUri = panel.webview.asWebviewUri(scriptPath);
++        this.commandExecutor
++          .executeLogCommand(panel, hash)
++          .then((commits: CommitInfo[]) => {
++
++            // TODO: change logic to get relevant commits from findRelevancy()
++            const relevantLines = commits.map((commit) => {
++              return Array.from({ length: 11 }, (_, i) => i + 10).map((i)=> {
++                return ["./nachos/threads/KThread.java", i%2===0?`+      "resolved": "https://registry.npmjs.org/diffparser/-/diffparser-2.0.1.tgz",`:`-    "typescript": "^5.8.2",`];
++            });
++            });
++
++            panel.webview.html = this.getViewContent(
++              stylesheetUri,
++              scriptUri,
++              commits,
++              relevantLines
++            );
++          });
+       }
+     );
+   }
+@@ -126,6 +156,8 @@ class CommitViewer {
+     commits: CommitInfo[],
+     relevantLines: string[][][]
+   ): string {
++    // TODO: line content seems to be trimmed in the middle where there are multiple spaces
++    console.log("Relevant lines: ", relevantLines[0]);
+     return (
+       `<!DOCTYPE html>
          <html lang="en">
-           <head>
-             <meta charset="UTF-8">
-             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-             <link href="${stylesheetUri}" rel="stylesheet">
-+            <script src="${scriptUri}"></script>
-             <title>Commit Viewer</title>
-           </head>
-           <body>
--            <h1>Relevant Commits</h1>`
-+            <h1>Relevant Commits</h1>
-+            <div class="commit-list">`
-             + 
-             commits.map(commit => {
--              return `<div class ="commit-viewer"> 
-+              return `<div class ="single-commit" onclick="alertOnCommitClick('${commit.hash}')"> 
-                         <pre>${commit.hash} ${commit.message}</pre>
-                       </div>`;
-             }).join("")              
+@@ -151,7 +183,7 @@ class CommitViewer {
+                             const backgroundColor = isDeletion ? "red" : "green";
+                             return `
+                               <p class="relevant-line ${backgroundColor}-background"> 
+-                              <span class="line-label">${line[0]}: </span>${line[1]}
++                              <span class="line-label">${line[0]}: </span>${line[1]} 
+                             </p>`;
+                         }).join("") 
+                         +`</div>

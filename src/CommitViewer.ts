@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { CommandExecutor } from "./CommandExecutor";
-import {findRelevancy} from "./findRelevancy";
+import { findRelevancy } from './findRelevancy.js';
+import { execSync } from 'child_process';
 interface CommitInfo {
   hash: string;
   message: string;
@@ -84,9 +85,8 @@ class CommitViewer {
         this.commandExecutor
           .executeLogCommand(panel, hash)
           .then((commits: CommitInfo[]) => {
-
             // TODO: change logic to get relevant commits from findRelevancy()
-
+            
             findRelevancy(vscode.Uri.joinPath(context.extensionUri, "git-files", "test.diff").fsPath, "", new Date(), "autecht", 20, 50, [0.5, 0.3, 0.8]);
             const relevantLines = commits.map((commit) => {
               return Array.from({ length: 11 }, (_, i) => i + 10).map((i)=> {
@@ -161,6 +161,7 @@ class CommitViewer {
   ): string {
     // TODO: line content seems to be trimmed in the middle where there are multiple spaces
     console.log("Relevant lines: ", relevantLines[0]);
+    
     return (
       `<!DOCTYPE html>
         <html lang="en">

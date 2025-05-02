@@ -41,6 +41,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
+    "@types/git-diff-parser": "^1.0.4",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
     "@types/vscode": "^1.99.0",
@@ -52,6 +53,7 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
+    "diff-parser": "^0.0.1",
     "diffparser": "^2.0.1",
     "git-diff-parser": "^1.0.0"
   }
