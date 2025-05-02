@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { CommandExecutor } from "./CommandExecutor";
+import {findRelevancy} from "./findRelevancy";
 interface CommitInfo {
   hash: string;
   message: string;
@@ -85,6 +86,8 @@ class CommitViewer {
           .then((commits: CommitInfo[]) => {
 
             // TODO: change logic to get relevant commits from findRelevancy()
+
+            findRelevancy(vscode.Uri.joinPath(context.extensionUri, "git-files", "test.diff").fsPath, "", new Date(), "autecht", 20, 50, [0.5, 0.3, 0.8]);
             const relevantLines = commits.map((commit) => {
               return Array.from({ length: 11 }, (_, i) => i + 10).map((i)=> {
                 return ["./nachos/threads/KThread.java", i%2===0?`+      "resolved": "https://registry.npmjs.org/diffparser/-/diffparser-2.0.1.tgz",`:`-    "typescript": "^5.8.2",`];

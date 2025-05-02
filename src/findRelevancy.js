@@ -17,6 +17,8 @@
  */
 
 function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, endLine, mults) {
+    // vscode.window.showInformationMessage("We're finding relevancy...");
+    console.log("Finding relevancy...");
     let authorMult = mults[0];
     let timeMult = mults[1];
     let locationMult = mults[2];
@@ -46,7 +48,6 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     let numLocationLines = 0;
 
     let bestLines = {};
-
     for (let curFile = 0; curFile < standard.length; ++curFile) {
         const fileName = standard[curFile]['name'];
         const fileContent = standard[curFile];
@@ -133,4 +134,7 @@ function getBlameAuthors(filePath) {
     return authors;
 }
 
-console.log(findRelevancy("test.diff", "src/CommitViewer.ts", new Date('2025-04-24 20:40:18 -0700'), 'autecht', 30, 50, [0.5, 0.3, 0.8]));
+// console.log(findRelevancy("test.diff", "src/CommitViewer.ts", new Date('2025-04-24 20:40:18 -0700'), 'autecht', 30, 50, [0.5, 0.3, 0.8]));
+
+export { findRelevancy };
+export { getBlameAuthors };
