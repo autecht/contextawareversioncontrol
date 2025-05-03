@@ -1,8 +1,12 @@
 import * as vscode from "vscode";
 import { CommandExecutor } from "./CommandExecutor";
+import { findRelevancy } from './findRelevancy.js';
+import { execSync } from 'child_process';
 interface CommitInfo {
   hash: string;
   message: string;
+  relevance?:number;
+  relevantLines?: string[][]; // Array of string arrays, where each string array contains two strings: filename changed and line content of relevant line changed
 }
 
 class CommitViewer {
@@ -17,6 +21,7 @@ class CommitViewer {
     this.showCommitsCommand = vscode.commands.registerCommand(
       "contextawareversioncontrol.showCommits",
       () => {
+        vscode.window.showInformationMessage("Showing relevant commits");
         const panel = this.createWebviewPanel(
           context,
           "showCommits",
@@ -36,27 +41,30 @@ class CommitViewer {
           "media",
           "commit-view.js"
         );
+
         const scriptUri = panel.webview.asWebviewUri(scriptPath);
-        this.commandExecutor
-          .executeLogCommand(panel)
-          .then((commits: CommitInfo[]) => {
+        this.commandExecutor.getRelevantCommits()
+          .then((commits) => {
+            commits = commits.sort((commit1, commit2) => {
+              if (commit1.relevance === undefined) {
+                return 1; // commit1 is less relevant
+              }
+              if (commit2.relevance === undefined) {
+                return -1; // commit2 is less relevant
+              }
+              return commit2.relevance - commit1.relevance;
+            });
 
             // TODO: change logic to get relevant commits from findRelevancy()
-            const relevantLines = commits.map((commit) => {
-              return Array.from({ length: 11 }, (_, i) => i + 10).map((i)=> {
-                return ["./nachos/threads/KThread.java", i%2===0?`+      "resolved": "https://registry.npmjs.org/diffparser/-/diffparser-2.0.1.tgz",`:`-    "typescript": "^5.8.2",`];
+              panel.webview.html = this.getViewContent(
+                stylesheetUri,
+                scriptUri,
+                commits
+              );
             });
-            });
-
-            panel.webview.html = this.getViewContent(
-              stylesheetUri,
-              scriptUri,
-              commits,
-              relevantLines
-            );
           });
-      }
-    );
+      
+
 
     this.showCommitCommand = vscode.commands.registerCommand(
       "contextawareversioncontrol.showCommit",
@@ -80,27 +88,18 @@ class CommitViewer {
           "commit-view.js"
         );
         const scriptUri = panel.webview.asWebviewUri(scriptPath);
-        this.commandExecutor
-          .executeLogCommand(panel, hash)
-          .then((commits: CommitInfo[]) => {
-
-            // TODO: change logic to get relevant commits from findRelevancy()
-            const relevantLines = commits.map((commit) => {
-              return Array.from({ length: 11 }, (_, i) => i + 10).map((i)=> {
-                return ["./nachos/threads/KThread.java", i%2===0?`+      "resolved": "https://registry.npmjs.org/diffparser/-/diffparser-2.0.1.tgz",`:`-    "typescript": "^5.8.2",`];
-            });
+        this.commandExecutor.getRelevantCommits(hash)
+          .then((commits) => {
+              panel.webview.html = this.getViewContent(
+                stylesheetUri,
+                scriptUri,
+                commits
+              );
             });
 
-            panel.webview.html = this.getViewContent(
-              stylesheetUri,
-              scriptUri,
-              commits,
-              relevantLines
-            );
           });
-      }
-    );
   }
+    
 
   /**
    *
@@ -153,11 +152,10 @@ class CommitViewer {
   getViewContent(
     stylesheetUri: vscode.Uri,
     scriptUri: vscode.Uri,
-    commits: CommitInfo[],
-    relevantLines: string[][][]
+    commits: CommitInfo[]
   ): string {
     // TODO: line content seems to be trimmed in the middle where there are multiple spaces
-    console.log("Relevant lines: ", relevantLines[0]);
+    
     return (
       `<!DOCTYPE html>
         <html lang="en">
@@ -178,7 +176,7 @@ class CommitViewer {
                         <div onclick="checkoutCommit('${commit.hash}')" class="button"> Checkout </div>
 
                         <div class = "relevant-lines">`
-                        + relevantLines[idx].map((line) => {
+                        + (commit.relevantLines as string[][]).map((line) => {
                             const isDeletion = line[1].startsWith("-");
                             const backgroundColor = isDeletion ? "red" : "green";
                             return `
