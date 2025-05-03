@@ -45,6 +45,16 @@ class CommitViewer {
         const scriptUri = panel.webview.asWebviewUri(scriptPath);
         this.commandExecutor.getRelevantCommits()
           .then((commits) => {
+            commits = commits.sort((commit1, commit2) => {
+              if (commit1.relevance === undefined) {
+                return 1; // commit1 is less relevant
+              }
+              if (commit2.relevance === undefined) {
+                return -1; // commit2 is less relevant
+              }
+              return commit2.relevance - commit1.relevance;
+            });
+
             // TODO: change logic to get relevant commits from findRelevancy()
               panel.webview.html = this.getViewContent(
                 stylesheetUri,
