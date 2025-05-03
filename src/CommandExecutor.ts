@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { exec } from "child_process";
 import * as util from "util";
 import { CommitViewer, CommitInfo } from "./CommitViewer";
+import { findRelevancy } from "./findRelevancy.js";
 
 class CommandExecutor {
   context: vscode.ExtensionContext;
@@ -84,7 +85,7 @@ class CommandExecutor {
     }
   }
 
-  async executeLogCommand(panel: vscode.WebviewPanel, hash?: string): Promise<CommitInfo[]> {
+  async executeLogCommand(panel: vscode.WebviewPanel, hash?: string): Promise<[CommitInfo[], string[][][]]> {
     const command =
       hash === undefined
         ? 'git log --pretty="%h "%s'
@@ -92,10 +93,23 @@ class CommandExecutor {
     
 
     const output = await this.executeCommand(command);
-    const commits = this.getCommitInfo(output);
-    return commits;
+    let commits = this.getCommitInfo(output);
+    if (hash === undefined) {
+      commits = commits.slice(1, commits.length); // Remove the first commit
+    }
+    console.log("There are this many commits: ", commits.length);
+    const linesForEachCommit = commits.map(async (commit) =>{
+      const diffOut = await this.executeCommand("git diff --no-color --unified=0 " + commit.hash);
+      const relevantLines:[number, string[][]] = findRelevancy(vscode.Uri.joinPath(
+        this.context.extensionUri, "git-files", "test.diff").fsPath, 
+        "", new Date(), 
+        "autecht", 
+        20, 50, [0.5, 0.3, 0.8], 
+        diffOut) as [number, string[][]];
+      return relevantLines[1];
+    }); 
 
-    
+    return Promise.all([commits, Promise.all(linesForEachCommit)]);
   }
 
   /**

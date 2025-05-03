@@ -19,6 +19,7 @@ class CommitViewer {
     this.showCommitsCommand = vscode.commands.registerCommand(
       "contextawareversioncontrol.showCommits",
       () => {
+        vscode.window.showInformationMessage("Showing relevant commits");
         const panel = this.createWebviewPanel(
           context,
           "showCommits",
@@ -38,27 +39,21 @@ class CommitViewer {
           "media",
           "commit-view.js"
         );
+        
         const scriptUri = panel.webview.asWebviewUri(scriptPath);
-        this.commandExecutor
-          .executeLogCommand(panel)
-          .then((commits: CommitInfo[]) => {
-
+        this.commandExecutor.executeLogCommand(panel)
+          .then(([commits, relevantLines]) => {
             // TODO: change logic to get relevant commits from findRelevancy()
-            const relevantLines = commits.map((commit) => {
-              return Array.from({ length: 11 }, (_, i) => i + 10).map((i)=> {
-                return ["./nachos/threads/KThread.java", i%2===0?`+      "resolved": "https://registry.npmjs.org/diffparser/-/diffparser-2.0.1.tgz",`:`-    "typescript": "^5.8.2",`];
+              panel.webview.html = this.getViewContent(
+                stylesheetUri,
+                scriptUri,
+                commits,
+                relevantLines
+              );
             });
-            });
-
-            panel.webview.html = this.getViewContent(
-              stylesheetUri,
-              scriptUri,
-              commits,
-              relevantLines
-            );
           });
-      }
-    );
+      
+
 
     this.showCommitCommand = vscode.commands.registerCommand(
       "contextawareversioncontrol.showCommit",
@@ -82,28 +77,20 @@ class CommitViewer {
           "commit-view.js"
         );
         const scriptUri = panel.webview.asWebviewUri(scriptPath);
-        this.commandExecutor
-          .executeLogCommand(panel, hash)
-          .then((commits: CommitInfo[]) => {
+        this.commandExecutor.executeLogCommand(panel, hash)
+          .then(([commits, relevantLines]) => {
             // TODO: change logic to get relevant commits from findRelevancy()
-            
-            findRelevancy(vscode.Uri.joinPath(context.extensionUri, "git-files", "test.diff").fsPath, "", new Date(), "autecht", 20, 50, [0.5, 0.3, 0.8]);
-            const relevantLines = commits.map((commit) => {
-              return Array.from({ length: 11 }, (_, i) => i + 10).map((i)=> {
-                return ["./nachos/threads/KThread.java", i%2===0?`+      "resolved": "https://registry.npmjs.org/diffparser/-/diffparser-2.0.1.tgz",`:`-    "typescript": "^5.8.2",`];
-            });
+              panel.webview.html = this.getViewContent(
+                stylesheetUri,
+                scriptUri,
+                commits,
+                relevantLines
+              );
             });
 
-            panel.webview.html = this.getViewContent(
-              stylesheetUri,
-              scriptUri,
-              commits,
-              relevantLines
-            );
           });
-      }
-    );
   }
+    
 
   /**
    *
@@ -160,7 +147,7 @@ class CommitViewer {
     relevantLines: string[][][]
   ): string {
     // TODO: line content seems to be trimmed in the middle where there are multiple spaces
-    console.log("Relevant lines: ", relevantLines[0]);
+    console.log("Relevant lines in webview: ", relevantLines);
     
     return (
       `<!DOCTYPE html>

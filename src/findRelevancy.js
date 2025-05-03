@@ -12,7 +12,8 @@ const fs = require('fs');
  * @param {Int} endLine last line in user's current viewing window
  * @param {Float[]} mults array representing all the current relevancy settings 
  * in the order of author, time, location. (and any future metrics)
- * 
+ * @param {string} stdout standard output stream
+ *
  * @returns length 2 array:
  * index 0: float representing relevancy of current commit 
  * (over all the files changed) with 1 being very relevant and 0 being not relevant at all
@@ -20,8 +21,9 @@ const fs = require('fs');
  * all the lines changed
  */
 
-function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, endLine, mults) {
-    // vscode.window.showInformationMessage("We're finding relevancy...");
+let calls = 0; //for debugging purposes, to see how many times this function is called
+function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, endLine, mults, stdout) {
+    console.log("Calling findRelevancy() for time: ", ++calls);
     console.log("Finding relevancy...");
     let authorMult = mults[0];
     let timeMult = mults[1];
@@ -35,14 +37,15 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     let relevancy = [0, timePassedScaled, 0]; //[author, time, location]
 
     const diff = fs.readFileSync(diffFile, 'utf8');
-    
-    const parsed = parse(diff);
 
-    console.log(parsed);
+    
+    const parsed = parse(stdout);
+
+
 
     //let startLine = 30; //using placeholders as current viewing window for now
     //let endLine = 50;
-
+    console.log("Parsed another commit");
     const standard = parsed['commits'][0]['files'];
     let author = 0;
     let location = 0;
@@ -97,7 +100,7 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     relevancy[0] = author / numAuthorLines * authorMult;
     relevancy[2] = location / numLocationLines * locationMult;
 
-    console.log(relevancy);
+    // console.log(relevancy);
 
     //standard L2 distance normalized between 1 (close -> very relevant) and 0 (far -> irrelevant)
     const dist = Math.sqrt(relevancy[0]**2 + relevancy[1]**2 + relevancy[2]**2) / Math.sqrt(3);
@@ -110,8 +113,7 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     items.sort(function(first, second) {
         return second[1] - first[1];
     });
-
-    return [dist, items.slice(0, 10)];
+    return [dist, items.slice(0, 10).map(item=>['', item[0]])];
 }
 
 /**
