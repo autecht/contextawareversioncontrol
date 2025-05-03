@@ -85,7 +85,12 @@ class CommandExecutor {
     }
   }
 
-  async executeLogCommand(panel: vscode.WebviewPanel, hash?: string): Promise<[CommitInfo[], string[][][]]> {
+  /**
+   * 
+   * @param hash: hash of specific commit to retrieve. If undefined, retrieves all commits except initial commit.
+   * @returns Promise with array of CommitInfo objects representing each commit.
+   */
+  async getRelevantCommits(hash?: string): Promise<CommitInfo[]> {
     const command =
       hash === undefined
         ? 'git log --pretty="%h "%s'
@@ -97,8 +102,7 @@ class CommandExecutor {
     if (hash === undefined) {
       commits = commits.slice(1, commits.length); // Remove the first commit
     }
-    console.log("There are this many commits: ", commits.length);
-    const linesForEachCommit = commits.map(async (commit) =>{
+    const commitsRelevance = commits.map(async (commit) =>{
       const diffOut = await this.executeCommand("git diff --no-color --unified=0 " + commit.hash);
       const relevantLines:[number, string[][]] = findRelevancy(vscode.Uri.joinPath(
         this.context.extensionUri, "git-files", "test.diff").fsPath, 
@@ -106,10 +110,16 @@ class CommandExecutor {
         "autecht", 
         20, 50, [0.5, 0.3, 0.8], 
         diffOut) as [number, string[][]];
-      return relevantLines[1];
+      return relevantLines;
     }); 
 
-    return Promise.all([commits, Promise.all(linesForEachCommit)]);
+    const linesAndRelevance = await Promise.all(commitsRelevance);
+
+    commits = commits.map((commit, idx) => {
+      return {...commit, relevantLines: linesAndRelevance[idx][1], relevance: linesAndRelevance[idx][0]}
+    });
+
+    return commits;
   }
 
   /**

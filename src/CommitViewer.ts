@@ -5,6 +5,8 @@ import { execSync } from 'child_process';
 interface CommitInfo {
   hash: string;
   message: string;
+  relevance?:number;
+  relevantLines?: string[][]; // Array of string arrays, where each string array contains two strings: filename changed and line content of relevant line changed
 }
 
 class CommitViewer {
@@ -39,16 +41,15 @@ class CommitViewer {
           "media",
           "commit-view.js"
         );
-        
+
         const scriptUri = panel.webview.asWebviewUri(scriptPath);
-        this.commandExecutor.executeLogCommand(panel)
-          .then(([commits, relevantLines]) => {
+        this.commandExecutor.getRelevantCommits()
+          .then((commits) => {
             // TODO: change logic to get relevant commits from findRelevancy()
               panel.webview.html = this.getViewContent(
                 stylesheetUri,
                 scriptUri,
-                commits,
-                relevantLines
+                commits
               );
             });
           });
@@ -77,14 +78,12 @@ class CommitViewer {
           "commit-view.js"
         );
         const scriptUri = panel.webview.asWebviewUri(scriptPath);
-        this.commandExecutor.executeLogCommand(panel, hash)
-          .then(([commits, relevantLines]) => {
-            // TODO: change logic to get relevant commits from findRelevancy()
+        this.commandExecutor.getRelevantCommits(hash)
+          .then((commits) => {
               panel.webview.html = this.getViewContent(
                 stylesheetUri,
                 scriptUri,
-                commits,
-                relevantLines
+                commits
               );
             });
 
@@ -143,11 +142,9 @@ class CommitViewer {
   getViewContent(
     stylesheetUri: vscode.Uri,
     scriptUri: vscode.Uri,
-    commits: CommitInfo[],
-    relevantLines: string[][][]
+    commits: CommitInfo[]
   ): string {
     // TODO: line content seems to be trimmed in the middle where there are multiple spaces
-    console.log("Relevant lines in webview: ", relevantLines);
     
     return (
       `<!DOCTYPE html>
@@ -169,7 +166,7 @@ class CommitViewer {
                         <div onclick="checkoutCommit('${commit.hash}')" class="button"> Checkout </div>
 
                         <div class = "relevant-lines">`
-                        + relevantLines[idx].map((line) => {
+                        + (commit.relevantLines as string[][]).map((line) => {
                             const isDeletion = line[1].startsWith("-");
                             const backgroundColor = isDeletion ? "red" : "green";
                             return `
