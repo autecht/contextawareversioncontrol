@@ -71,6 +71,7 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
             let curChange = filteredLines[i];
             let curLine = curChange['ln1'];
             let lineContent = curChange['text'];
+            lineContent = curChange['type'] === 'deleted' ? '- ' + lineContent : '+ ' + lineContent;
             let curLineEval = [0, 0]; //author, location
             
             //author check
