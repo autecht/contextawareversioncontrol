@@ -155,7 +155,6 @@ class CommitViewer {
     commits: CommitInfo[]
   ): string {
     // TODO: line content seems to be trimmed in the middle where there are multiple spaces
-    
     return (
       `<!DOCTYPE html>
         <html lang="en">

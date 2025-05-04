@@ -43,7 +43,6 @@ class CommandExecutor {
   }
 
   async executeDiffCommand(message: CommitInfo) {
-    console.log("Executing diff command for commit:", message.hash);
     const output = await this.executeCommand(
       `git diff-tree --no-commit-id --name-only -r ${message.hash}`
     );
@@ -74,7 +73,6 @@ class CommandExecutor {
         query: JSON.stringify(params),
       });
 
-      console.log("About to open diff view");
       // Open diff view
       vscode.commands.executeCommand(
         "vscode.diff",

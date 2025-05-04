@@ -21,9 +21,7 @@ const fs = require('fs');
  * all the lines changed
  */
 
-let calls = 0; //for debugging purposes, to see how many times this function is called
 function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, endLine, mults, stdout) {
-    console.log("Calling findRelevancy() for time: ", ++calls);
     console.log("Finding relevancy...");
     let authorMult = mults[0];
     let timeMult = mults[1];
@@ -45,7 +43,6 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
 
     //let startLine = 30; //using placeholders as current viewing window for now
     //let endLine = 50;
-    console.log("Parsed another commit");
     const standard = parsed['commits'][0]['files'];
     let author = 0;
     let location = 0;
@@ -53,6 +50,8 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     let numLocationLines = 0;
 
     let bestLines = {};
+    let fileNames = {};
+    console.log("LENGTH: ", standard[0].length);
     for (let curFile = 0; curFile < standard.length; ++curFile) {
         const fileName = standard[curFile]['name'];
         const fileContent = standard[curFile];
@@ -95,26 +94,28 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
             }
 
             bestLines[lineContent] = Math.sqrt(curLineEval[0]**2 + curLineEval[1]**2) / Math.sqrt(2);
+            fileNames[lineContent] = fileName;
         }
     }
 
     relevancy[0] = author / numAuthorLines * authorMult;
     relevancy[2] = location / numLocationLines * locationMult;
 
-    // console.log(relevancy);
 
     //standard L2 distance normalized between 1 (close -> very relevant) and 0 (far -> irrelevant)
     const dist = Math.sqrt(relevancy[0]**2 + relevancy[1]**2 + relevancy[2]**2) / Math.sqrt(3);
 
+    console.log("Filenames: ", fileNames);
     //sort dictionary
-    var items = Object.keys(bestLines).map(function(key) {
-        return [key, bestLines[key]];
+    var items = Object.keys(bestLines).map(function(lineContent) {
+        return [bestLines[lineContent], [fileNames[lineContent], lineContent]];
     });
 
     items.sort(function(first, second) {
-        return second[1] - first[1];
+        return second[0] - first[0];
     });
-    return [dist, items.slice(0, 10).map(item=>['', item[0]])];
+    const result = [dist, items.slice(0, 10).map(item=>item[1])];
+    return result;
 }
 
 /**

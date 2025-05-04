@@ -11,7 +11,6 @@ function openDiffFile(hash) {
 }
 
 function checkoutCommit(hash) {
-  console.log(hash);
   vscode.postMessage({
     command: 'checkoutCommit',
     hash: hash
