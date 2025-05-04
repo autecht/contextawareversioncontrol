@@ -101,7 +101,8 @@ class CommandExecutor {
       commits = commits.slice(1, commits.length); // Remove the first commit
     }
     const commitsRelevance = commits.map(async (commit) =>{
-      const diffOut = await this.executeCommand("git diff --no-color --unified=0 " + commit.hash);
+      // const diffOut = await this.executeCommand(`git diff --no-color --unified=0 ${commit.hash}^ ${commit.hash}`);
+      const diffOut = await this.executeCommand(`git show ${commit.hash}`);
       const relevantLines:[number, string[][]] = findRelevancy(vscode.Uri.joinPath(
         this.context.extensionUri, "git-files", "test.diff").fsPath, 
         "", new Date(), 
