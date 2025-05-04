@@ -34,16 +34,14 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
 
     let relevancy = [0, timePassedScaled, 0]; //[author, time, location]
 
-    const diff = fs.readFileSync(diffFile, 'utf8');
-
-    
+    //const diff = fs.readFileSync(stdout, 'utf8');
     const parsed = parse(stdout);
+    //console.log(parsed);
 
+    //console.log(parsed['commits'].length);
 
-
-    //let startLine = 30; //using placeholders as current viewing window for now
-    //let endLine = 50;
     const standard = parsed['commits'][0]['files'];
+
     let author = 0;
     let location = 0;
     let numAuthorLines = 0;
@@ -51,16 +49,14 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
 
     let bestLines = {};
     let fileNames = {};
-    console.log("LENGTH: ", standard[0].length);
+    //console.log("LENGTH: ", standard[0].length);
     for (let curFile = 0; curFile < standard.length; ++curFile) {
         const fileName = standard[curFile]['name'];
         const fileContent = standard[curFile];
         const lines = standard[curFile]['lines'];
         const filteredLines = lines.filter(line => line.type !== 'normal');
 
-        //let blameAuthors = getBlameAuthors(fileName); 
-        //this wouldn't work directly since I can't call git in a .js file, but 
-        //should work fine when integrated into the main files
+        let blameAuthors = getBlameAuthors(fileName.split('/').pop() + "_blame.txt"); 
         
         let totalFileLines = lines.length;
         numAuthorLines += lines.filter(line => line.type === 'deleted').length;
@@ -71,41 +67,41 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
             let curLine = curChange['ln1'];
             let lineContent = curChange['text'];
             lineContent = curChange['type'] === 'deleted' ? '- ' + lineContent : '+ ' + lineContent;
-            let curLineEval = [0, 0]; //author, location
+            let curLineEval = [0, timePassedScaled, 0]; //author, time, location
             
             //author check
             if (curChange['type'] === 'deleted') {
-                //author += blameAuthors[curLine] === authorName ? 1 : 0;
-                //curLineEval[0] += blameAuthors[curLine] === authorName ? 1 : 0;
+                author += blameAuthors[curLine] === authorName ? 1 : 0;
+                curLineEval[0] += blameAuthors[curLine] === authorName ? 1 : 0;
             }
 
             //location calculation
             if (fileName === userFile) {
                 if (curLine >= startLine && curLine <= endLine) {
                     location += 1;
-                    curLineEval[1] += 1;
+                    curLineEval[2] += 1;
                 } else if (curLine < startLine) {
                     location += 1 - ((startLine - curLine) / startLine);
-                    curLineEval[1] += 1 - ((startLine - curLine) / startLine);
+                    curLineEval[2] += 1 - ((startLine - curLine) / startLine);
                 } else {
                     location += 1 - ((curLine - endLine) / (totalFileLines));
-                    curLineEval[1] += 1 - ((curLine - endLine) / (totalFileLines));
+                    curLineEval[2] += 1 - ((curLine - endLine) / (totalFileLines));
                 }
             }
 
-            bestLines[lineContent] = Math.sqrt(curLineEval[0]**2 + curLineEval[1]**2) / Math.sqrt(2);
+            bestLines[lineContent] = Math.sqrt(curLineEval[0]**2 + curLineEval[1]**2 + curLineEval[2]**2) / Math.sqrt(3);
             fileNames[lineContent] = fileName;
         }
     }
-
-    relevancy[0] = author / numAuthorLines * authorMult;
-    relevancy[2] = location / numLocationLines * locationMult;
-
+    
+    relevancy[0] = numAuthorLines === 0 ? 0 : author / numAuthorLines * authorMult;
+    relevancy[2] = numLocationLines === 0 ? 0 : location / numLocationLines * locationMult;
 
     //standard L2 distance normalized between 1 (close -> very relevant) and 0 (far -> irrelevant)
     const dist = Math.sqrt(relevancy[0]**2 + relevancy[1]**2 + relevancy[2]**2) / Math.sqrt(3);
+    //console.log(relevancy);
 
-    console.log("Filenames: ", fileNames);
+    //console.log("Filenames: ", fileNames);
     //sort dictionary
     var items = Object.keys(bestLines).map(function(lineContent) {
         return [bestLines[lineContent], [fileNames[lineContent], lineContent]];
@@ -140,6 +136,6 @@ function getBlameAuthors(filePath) {
     return authors;
 }
 
-//console.log(findRelevancy("git-files/test.diff", "src/CommitViewer.ts", new Date('2025-04-24 20:40:18 -0700'), 'autecht', 30, 50, [0.5, 0.3, 0.8]));
+//console.log(findRelevancy("git-files/test.diff", "src/CommitViewer.ts", new Date('2025-04-24 20:40:18 -0700'), 'autecht', 30, 50, [0.5, 0.3, 0.8], "git-files/test.diff"));
 
 module.exports = {findRelevancy, getBlameAuthors};
