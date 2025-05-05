@@ -36,8 +36,15 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
 
     const diff = fs.readFileSync(diffFile, 'utf8');
 
-    
-    const parsed = parse(stdout);
+
+    let parsed;
+    try {
+        parsed = parse(stdout);
+    }
+    catch (error) {
+        console.error("No changes found in commit: ", error);
+        return [0, []];
+    }
 
 
 
