@@ -12,6 +12,7 @@ interface CommitInfo {
 class CommitViewer {
   showCommitsCommand: vscode.Disposable;
   showCommitCommand: vscode.Disposable;
+  visualizeLinesCommand: vscode.Disposable;
   commandExecutor: CommandExecutor;
 
   constructor(context: vscode.ExtensionContext) {
@@ -98,6 +99,66 @@ class CommitViewer {
             });
 
           });
+
+    this.visualizeLinesCommand = vscode.commands.registerCommand(
+      "contextawareversioncontrol.visualizeLines",
+      () => {
+        vscode.window.showInformationMessage("Showing relevant commits");
+        const panel = this.createWebviewPanel(
+          context,
+          "visualizeLines",
+          "Visualize Lines"
+        );
+        panel.webview.onDidReceiveMessage(this.handleMessage);
+
+        const stylesheetPath = vscode.Uri.joinPath(
+          context.extensionUri,
+          "media",
+          "commit-view.css"
+        );
+        const stylesheetUri = panel.webview.asWebviewUri(stylesheetPath);
+
+        const scriptPath = vscode.Uri.joinPath(
+          context.extensionUri,
+          "media",
+          "commit-view.js"
+        );
+
+        const scriptUri = panel.webview.asWebviewUri(scriptPath);
+        
+        // first step is to get the relevance of line blamed for each
+        this.commandExecutor.getLineRelevance().then((fileRelevances) => {
+          panel.webview.html = this.getVisualizationHtml(fileRelevances);
+        });
+    });
+  }
+  getVisualizationHtml(fileRelevances: { [fileName: string]: number[]; }): string {
+    console.log("In getVisualizationHtml");
+    return `<!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Line Visualization</title>
+          </head>
+          <body>` + 
+          Object.keys(fileRelevances).map((fileName) => {
+            return `
+              <h1>${fileName}</h1>
+              <div class="lineRelevances">
+                ${fileRelevances[fileName].map((relevance, idx) => {
+                  return `<p class="lineRelevance">Line ${idx + 1}: ${relevance}</p>`;
+                })
+                
+                }
+              </div>
+              `;
+
+          }).join("")
+          +
+          `</body>
+        </html>`;
+    throw new Error("Method not implemented.");
   }
     
 

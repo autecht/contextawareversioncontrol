@@ -23,6 +23,7 @@ const fs = require('fs');
 
 function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, endLine, mults, stdout) {
     console.log("Finding relevancy...");
+    try{
     let authorMult = mults[0];
     let timeMult = mults[1];
     let locationMult = mults[2];
@@ -37,14 +38,8 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     const diff = fs.readFileSync(diffFile, 'utf8');
 
 
-    let parsed;
-    try {
-        parsed = parse(stdout);
-    }
-    catch (error) {
-        console.error("No changes found in commit: ", error);
-        return [0, []];
-    }
+    let parsed = parse(stdout);
+    
 
 
 
@@ -58,7 +53,6 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
 
     let bestLines = {};
     let fileNames = {};
-    console.log("LENGTH: ", standard[0].length);
     for (let curFile = 0; curFile < standard.length; ++curFile) {
         const fileName = standard[curFile]['name'];
         const fileContent = standard[curFile];
@@ -112,7 +106,6 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     //standard L2 distance normalized between 1 (close -> very relevant) and 0 (far -> irrelevant)
     const dist = Math.sqrt(relevancy[0]**2 + relevancy[1]**2 + relevancy[2]**2) / Math.sqrt(3);
 
-    console.log("Filenames: ", fileNames);
     //sort dictionary
     var items = Object.keys(bestLines).map(function(lineContent) {
         return [bestLines[lineContent], [fileNames[lineContent], lineContent]];
@@ -123,6 +116,10 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     });
     const result = [dist, items.slice(0, 10).map(item=>item[1])];
     return result;
+    }catch (err) {
+        console.error("Unable to find relevant lines in findRelevancy(): ", err);
+        return [0, []];
+    }
 }
 
 /**
@@ -147,6 +144,5 @@ function getBlameAuthors(filePath) {
     return authors;
 }
 
-//console.log(findRelevancy("git-files/test.diff", "src/CommitViewer.ts", new Date('2025-04-24 20:40:18 -0700'), 'autecht', 30, 50, [0.5, 0.3, 0.8]));
 
 module.exports = {findRelevancy, getBlameAuthors};

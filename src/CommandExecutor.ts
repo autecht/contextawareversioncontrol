@@ -5,6 +5,7 @@ import { CommitViewer, CommitInfo } from "./CommitViewer";
 import { findRelevancy } from "./findRelevancy.js";
 
 class CommandExecutor {
+  
   context: vscode.ExtensionContext;
   workspaceRoot: vscode.WorkspaceFolder | undefined;
   commitViewer: CommitViewer;
@@ -17,6 +18,33 @@ class CommandExecutor {
     }
     const workspaceRoot = workspaceFolders[0];
     this.workspaceRoot = workspaceRoot;
+  }
+
+  async getLineRelevance() {
+    let commitRelevances: {[hash:string]: number} = {};
+    const allRelevances = await this.getRelevantCommits();
+    for (const commit of allRelevances) {
+      commitRelevances[commit.hash] = commit.relevance === undefined || Number.isNaN(commit.relevance) ? 0 : commit.relevance;
+    }
+    let fileRelevances: {[fileName: string]: number[]} = {};
+    const fileNamesOut = await this.executeCommand("git ls-files");
+    for (const filename of fileNamesOut.split("\n")) {
+      console.log("Filename: ", filename);
+      if (filename.trim() === "") {
+        continue;
+      }
+      const blameOut = await this.executeCommand(`git blame ${filename}`);
+      const lines = blameOut.split("\n").map((line) => line.split(" "));
+      const hashesResponsible = lines.map((line) => line[0]);
+      const relevanceOfResponsibleCommits = await Promise.all(
+        hashesResponsible.map(async (hash) => {
+          return commitRelevances[hash] === undefined?0: commitRelevances[hash];
+        })
+      ); 
+
+      fileRelevances[filename] = relevanceOfResponsibleCommits;
+    }
+    return fileRelevances;
   }
 
   async executeCommand(command: string): Promise<string> {
@@ -89,6 +117,7 @@ class CommandExecutor {
    * @returns Promise with array of CommitInfo objects representing each commit.
    */
   async getRelevantCommits(hash?: string): Promise<CommitInfo[]> {
+    console.log("In getRelevantCommits");
     const command =
       hash === undefined
         ? 'git log --pretty="%h "%s'
@@ -115,7 +144,7 @@ class CommandExecutor {
     const linesAndRelevance = await Promise.all(commitsRelevance);
 
     commits = commits.map((commit, idx) => {
-      return {...commit, relevantLines: linesAndRelevance[idx][1], relevance: linesAndRelevance[idx][0]}
+      return {...commit, relevantLines: linesAndRelevance[idx][1], relevance: linesAndRelevance[idx][0]};
     });
 
     return commits;
