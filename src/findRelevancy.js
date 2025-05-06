@@ -35,7 +35,13 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     let relevancy = [0, timePassedScaled, 0]; //[author, time, location]
 
     //const diff = fs.readFileSync(stdout, 'utf8');
-    const parsed = parse(stdout);
+    let parsed = parse(stdout);
+
+    if (parsed['commits'].length === 0) {
+        console.error("No changes found in commit: ", error);
+        return [0, []];
+    }
+    
     //console.log(parsed);
 
     //console.log(parsed['commits'].length);
@@ -52,7 +58,6 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     //console.log("LENGTH: ", standard[0].length);
     for (let curFile = 0; curFile < standard.length; ++curFile) {
         const fileName = standard[curFile]['name'];
-        const fileContent = standard[curFile];
         const lines = standard[curFile]['lines'];
         const filteredLines = lines.filter(line => line.type !== 'normal');
 
@@ -99,7 +104,7 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
 
     //standard L2 distance normalized between 1 (close -> very relevant) and 0 (far -> irrelevant)
     const dist = Math.sqrt(relevancy[0]**2 + relevancy[1]**2 + relevancy[2]**2) / Math.sqrt(3);
-    //console.log(relevancy);
+    console.log(relevancy);
 
     //console.log("Filenames: ", fileNames);
     //sort dictionary
