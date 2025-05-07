@@ -132,7 +132,7 @@ class CommitViewer {
         });
     });
   }
-  getVisualizationHtml(stylesheetUri: vscode.Uri,fileRelevances: { [fileName: string]: number[]; }): string {
+  getVisualizationHtml(stylesheetUri: vscode.Uri,fileRelevances: { [fileName: string]: any[]; }): string {
     console.log("In getVisualizationHtml");
     return `<!DOCTYPE html>
         <html lang="en">
@@ -148,10 +148,10 @@ class CommitViewer {
               <div class="relevance-container">
               <h3>${fileName}</h3>
               <div class="file-relevance">
-                ${fileRelevances[fileName].map((relevance, idx) => {
-                  const background = 255 - Math.round(relevance * 255);
+                ${fileRelevances[fileName].map((commit, idx) => {
+                  const background = 255 - Math.round(commit.relevance * 255);
                   const color = `rgb(${background}, ${background}, ${background})`;
-                  return `<div class="line-relevance" style="background-color:${color}">Line ${idx + 1}: ${relevance}</div>`;
+                  return `<div class="line-relevance" style="background-color:${color}">Line ${idx + 1}: ${commit.relevance} ${commit.hash}</div>`;
                 })
                 
                 }

@@ -27,7 +27,7 @@ class CommandExecutor {
       commitRelevances[commit.hash] = commit.relevance === undefined || Number.isNaN(commit.relevance) ? 0 : commit.relevance;
     }
     console.log("Commit Relevances: ", commitRelevances);
-    let fileRelevances: {[fileName: string]: number[]} = {};
+    let fileRelevances: {[fileName: string]: any[]} = {};
     const fileNamesOut = await this.executeCommand("git ls-files");
     for (const filename of fileNamesOut.split("\n")) {
       if (!filename.includes("threads/")) {
@@ -39,12 +39,17 @@ class CommandExecutor {
       }
       const blameOut = await this.executeCommand(`git blame ${filename}`);
       const lines = blameOut.split("\n").map((line) => line.split(" "));
-      const hashesResponsible = lines.map((line) => line[0]);
-      const relevanceOfResponsibleCommits = await Promise.all(
-        hashesResponsible.map(async (hash) => {
-          return commitRelevances[hash] === undefined?0: commitRelevances[hash];
-        })
-      ); 
+      const hashesResponsible = lines.map((line) => {
+        return line[0].startsWith("^")?line[0].slice(1):line[0].slice(0, -1);
+        }
+      );
+      const relevanceOfResponsibleCommits = hashesResponsible.map((hash) => {
+          console.log("Hash: ", hash);
+          const relevance = commitRelevances[hash] === undefined?0: commitRelevances[hash];
+          console.log("Relevance: ", relevance);
+          return {relevance: relevance, hash: hash};
+      });
+   
 
       fileRelevances[filename] = relevanceOfResponsibleCommits;
     }
