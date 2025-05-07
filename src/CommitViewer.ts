@@ -142,17 +142,19 @@ class CommitViewer {
             <link href="${stylesheetUri}" rel="stylesheet">
             <title>Line Visualization</title>
           </head>
-          <body>` + 
+          <body> <div class="relevance-container">` + 
           Object.keys(fileRelevances).map((fileName) => {
             return `
-              <div class="relevance-container">
+              <div class="file-container">
               <h3>${fileName}</h3>
-              <div class="file-relevance">
+              <div class="">
                 ${fileRelevances[fileName].map((commit, idx) => {
                   const background = 255 - Math.round(commit.relevance * 255);
                   const color = `rgb(${background}, ${background}, ${background})`;
-                  return `<div class="line-relevance" style="background-color:${color}">Line ${idx + 1}: ${commit.relevance} ${commit.hash}</div>`;
-                })
+                  return `<div class="line-relevance" style="background-color:${color}">`
+                    // + `Line ${idx + 1}: ${commit.relevance} ${commit.hash}`
+                  + `</div>`;
+                }).join("")
                 
                 }
               </div>
@@ -161,7 +163,7 @@ class CommitViewer {
 
           }).join("")
           +
-          `</body>
+          `</div></body>
         </html>`;
     throw new Error("Method not implemented.");
   }

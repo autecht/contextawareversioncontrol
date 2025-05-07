@@ -44,9 +44,9 @@ class CommandExecutor {
         }
       );
       const relevanceOfResponsibleCommits = hashesResponsible.map((hash) => {
-          console.log("Hash: ", hash);
+          // console.log("Hash: ", hash);
           const relevance = commitRelevances[hash] === undefined?0: commitRelevances[hash];
-          console.log("Relevance: ", relevance);
+          // console.log("Relevance: ", relevance);
           return {relevance: relevance, hash: hash};
       });
    
