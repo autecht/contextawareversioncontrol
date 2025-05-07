@@ -38,16 +38,25 @@ class CommandExecutor {
         continue;
       }
       const blameOut = await this.executeCommand(`git blame ${filename}`);
-      const lines = blameOut.split("\n").map((line) => line.split(" "));
-      const hashesResponsible = lines.map((line) => {
-        return line[0].startsWith("^")?line[0].slice(1):line[0].slice(0, -1);
-        }
-      );
-      const relevanceOfResponsibleCommits = hashesResponsible.map((hash) => {
+      const lines = blameOut.split("\n");
+      const content = lines.map((line) => line.split(/\d+\)/));
+      const hashesAndContent = content.map((line) => {
+        const hash = line[0].split(" ")[0];
+        const formattedHash = hash.startsWith("^")?hash.slice(1):hash.slice(0, -1);
+        const lineContent = line[1];
+        return { hash: formattedHash, lineContent: lineContent };
+      });
+
+      // const lines = blameOut.split("\n").map((line) => line.split(" "));
+      // const hashesResponsible = lines.map((line) => {
+      //   return line[0].startsWith("^")?line[0].slice(1):line[0].slice(0, -1);
+      //   }
+      // );
+      const relevanceOfResponsibleCommits = hashesAndContent.map((object) => {
           // console.log("Hash: ", hash);
-          const relevance = commitRelevances[hash] === undefined?0: commitRelevances[hash];
+          const relevance = commitRelevances[object.hash] === undefined?0: commitRelevances[object.hash];
           // console.log("Relevance: ", relevance);
-          return {relevance: relevance, hash: hash};
+          return {relevance: relevance, hash: object.hash, content: object.lineContent};
       });
    
 

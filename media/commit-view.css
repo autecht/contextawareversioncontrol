@@ -30,6 +30,7 @@
   padding-left:5px;
   padding-right: 5px;
   margin:0px;
+  
 }
 
 .red-background{
@@ -62,6 +63,9 @@
 
 .line-relevance{
   height:5px;
+  font-size: 5px;
+  line-height: 5px;
+  overflow: hidden;
 }
 
 .small-heading{ 

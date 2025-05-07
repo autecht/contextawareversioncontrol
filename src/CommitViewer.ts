@@ -152,7 +152,7 @@ class CommitViewer {
                   const background = 255 - Math.round(commit.relevance * 255);
                   const color = `rgb(${background}, ${background}, ${background})`;
                   return `<div class="line-relevance" style="background-color:${color}">`
-                    // + `Line ${idx + 1}: ${commit.relevance} ${commit.hash}`
+                    + `${commit.lineContent}`
                   + `</div>`;
                 }).join("")
                 
