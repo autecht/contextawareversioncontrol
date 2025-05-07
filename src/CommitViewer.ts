@@ -146,7 +146,7 @@ class CommitViewer {
           Object.keys(fileRelevances).map((fileName) => {
             return `
               <div class="file-container">
-              <h3>${fileName}</h3>
+              <h3 class = "small-heading">${fileName}</h3>
               <div class="">
                 ${fileRelevances[fileName].map((commit, idx) => {
                   const background = 255 - Math.round(commit.relevance * 255);
