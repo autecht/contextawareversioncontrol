@@ -128,29 +128,34 @@ class CommitViewer {
         
         // first step is to get the relevance of line blamed for each
         this.commandExecutor.getLineRelevance().then((fileRelevances) => {
-          panel.webview.html = this.getVisualizationHtml(fileRelevances);
+          panel.webview.html = this.getVisualizationHtml(stylesheetUri, fileRelevances);
         });
     });
   }
-  getVisualizationHtml(fileRelevances: { [fileName: string]: number[]; }): string {
+  getVisualizationHtml(stylesheetUri: vscode.Uri,fileRelevances: { [fileName: string]: number[]; }): string {
     console.log("In getVisualizationHtml");
     return `<!DOCTYPE html>
         <html lang="en">
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="${stylesheetUri}" rel="stylesheet">
             <title>Line Visualization</title>
           </head>
           <body>` + 
           Object.keys(fileRelevances).map((fileName) => {
             return `
-              <h1>${fileName}</h1>
-              <div class="lineRelevances">
+              <div class="relevance-container">
+              <h3>${fileName}</h3>
+              <div class="file-relevance">
                 ${fileRelevances[fileName].map((relevance, idx) => {
-                  return `<p class="lineRelevance">Line ${idx + 1}: ${relevance}</p>`;
+                  const background = 255 - Math.round(relevance * 255);
+                  const color = `rgb(${background}, ${background}, ${background})`;
+                  return `<div class="line-relevance" style="background-color:${color}">Line ${idx + 1}: ${relevance}</div>`;
                 })
                 
                 }
+              </div>
               </div>
               `;
 

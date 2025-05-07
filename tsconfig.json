@@ -7,7 +7,6 @@
 			"ES2022"
 		],
 		
-		"sourceMap": true,
 		"rootDir": "src",
 		"strict": true,   /* enable all strict type-checking options */
 		/* Additional Checks */
@@ -17,6 +16,10 @@
 
 		"allowJs": true, /* Allow javascript files to be compiled. */
 		// "checkJs": true, /* Report errors in .js files. */
+    "sourceMap": false,
+    "inlineSourceMap": false,
+    "removeComments": true,        // Optional: cleans up JS output
+  
 	},
 	"exclude": [
 	"media",

@@ -26,9 +26,13 @@ class CommandExecutor {
     for (const commit of allRelevances) {
       commitRelevances[commit.hash] = commit.relevance === undefined || Number.isNaN(commit.relevance) ? 0 : commit.relevance;
     }
+    console.log("Commit Relevances: ", commitRelevances);
     let fileRelevances: {[fileName: string]: number[]} = {};
     const fileNamesOut = await this.executeCommand("git ls-files");
     for (const filename of fileNamesOut.split("\n")) {
+      if (!filename.includes("threads/")) {
+        continue; // TODO: remove this line to get all files
+      }
       console.log("Filename: ", filename);
       if (filename.trim() === "") {
         continue;
@@ -126,9 +130,9 @@ class CommandExecutor {
 
     const output = await this.executeCommand(command);
     let commits = this.getCommitInfo(output);
-    if (hash === undefined) {
-      commits = commits.slice(1, commits.length); // Remove the first commit
-    }
+    // if (hash === undefined) {
+    //   commits = commits.slice(1, commits.length); // Remove the first commit
+    // }
     const commitsRelevance = commits.map(async (commit) =>{
       // const diffOut = await this.executeCommand(`git diff --no-color --unified=0 ${commit.hash}^ ${commit.hash}`);
       const diffOut = await this.executeCommand(`git show ${commit.hash}`);
