@@ -52,7 +52,6 @@ class CommandExecutor {
       if (directoryName !== directory){
         continue; // TODO: remove this line to get all files
       }
-      console.log("Filename: ", filename);
       if (filename.trim() === "") {
         continue;
       }

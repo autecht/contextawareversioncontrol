@@ -9,6 +9,7 @@ window.addEventListener('message', (event) => {
   console.log("Directory", directory);
   console.log("element", element);
   document.getElementById(directory).innerHTML += 
+    '<div class="relevance-container">' + 
     Object.keys(fileRelevances).map((fileName) => {
             return `
               <div class="file-container">
@@ -18,10 +19,10 @@ window.addEventListener('message', (event) => {
                   const background = 255 - Math.round(commit.relevance * 255);
                   const color = `rgb(${background}, ${background}, ${background})`;
                   return `<div class="line-relevance" style="background-color:${color}">`
-                    + `${commit.lineContent}`
+                    + `${commit.content}`
                   + `</div>`;
                 }).join("")}
-              </div> </div>`;}).join("");
+              </div> </div>`;}).join("") + '</div>';
 });
 
 

@@ -74,3 +74,10 @@
   overflow-wrap: break-word; /* preferred modern form */
   word-break: break-word;    /* optional for extra stubborn cases */
 }
+
+.big-heading{
+  max-width: 100%;
+  word-wrap: break-word;     /* old but widely supported */
+  overflow-wrap: break-word; /* preferred modern form */
+  word-break: break-word;    /* optional for extra stubborn cases */
+}

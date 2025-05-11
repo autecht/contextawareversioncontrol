@@ -148,11 +148,11 @@ class CommitViewer {
             <script src="${scriptUri}"></script>
             <title>Line Visualization</title>
           </head>
-          <body> <div class="relevance-container">` + 
+          <body> <div class="visualization-container">` + 
           directories.map((directory) => {
             return `
-              <div class = "directory-container" id="${directory}">
-              <h3 class = "small-heading" onclick="openDirectoryVisualization('${directory}')">${directory}</h3>
+              <div class = "directory-container" id="${directory===""?".":directory}">
+              <h2 class = "big-heading" onclick="openDirectoryVisualization('${directory===""?".":directory}')">${directory===""?".":directory}</h3>
               </div>
               `;
             }).join("") + 
@@ -223,7 +223,7 @@ class CommitViewer {
         console.error("Visualization panel is undefined");
         return;
       }
-      this.commandExecutor.getLineRelevance(message.directory).then((fileRelevances) => {
+      this.commandExecutor.getLineRelevance(message.directory === "."?"":message.directory).then((fileRelevances) => {
         if (this.visualizationPanel === undefined) {
           console.error("Visualization panel is undefined");
           return;
