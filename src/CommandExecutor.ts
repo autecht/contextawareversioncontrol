@@ -20,17 +20,36 @@ class CommandExecutor {
     this.workspaceRoot = workspaceRoot;
   }
 
-  async getLineRelevance() {
+
+  async getTrackedDirectories() {
+    const fileNamesOut = await this.executeCommand("git ls-files");
+    const fileNames = fileNamesOut.split("\n");
+    let directories = fileNames.map((fileName) => {
+      let parts = fileName.split("/");
+      parts.pop(); // Remove the last part (file name)
+      return parts.join("/");
+    });
+    directories = [...new Set(directories)];
+
+    console.log("Directories: ", directories);
+    return directories;
+    
+  }
+  async getLineRelevance(directory: string) {
+    // TODO: stopped here.  send message to panel, add event listener in webview, open appropriate directory
     let commitRelevances: {[hash:string]: number} = {};
     const allRelevances = await this.getRelevantCommits();
     for (const commit of allRelevances) {
       commitRelevances[commit.hash] = commit.relevance === undefined || Number.isNaN(commit.relevance) ? 0 : commit.relevance;
     }
-    console.log("Commit Relevances: ", commitRelevances);
     let fileRelevances: {[fileName: string]: any[]} = {};
+    // vscode.current
     const fileNamesOut = await this.executeCommand("git ls-files");
     for (const filename of fileNamesOut.split("\n")) {
-      if (!filename.includes("threads/")) {
+      let parts = filename.split("/");
+      parts.pop();
+      const directoryName = parts.join("/");
+      if (directoryName !== directory){
         continue; // TODO: remove this line to get all files
       }
       console.log("Filename: ", filename);
