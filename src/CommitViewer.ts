@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { CommandExecutor } from "./CommandExecutor";
 import { Viewer } from "./Viewer";
+import { GitNavigator } from "./GitNavigator";
 import { findRelevancy } from './findRelevancy.js';
 import { execSync } from 'child_process';
 interface CommitInfo {
@@ -14,11 +14,11 @@ class CommitViewer {
   showCommitsCommand: vscode.Disposable;
   showCommitCommand: vscode.Disposable;
   visualizeLinesCommand: vscode.Disposable;
-  commandExecutor: CommandExecutor;
+  gitNavigator: GitNavigator;
   visualizationPanel: vscode.WebviewPanel | undefined;
 
   constructor(context: vscode.ExtensionContext) {
-    this.commandExecutor = new CommandExecutor(context, this);
+    this.gitNavigator = new GitNavigator(context);
     this.handleMessage = this.handleMessage.bind(this); // Bind the method to the class instance
 
     this.showCommitsCommand = vscode.commands.registerCommand(
@@ -46,7 +46,7 @@ class CommitViewer {
         );
 
         const scriptUri = panel.webview.asWebviewUri(scriptPath);
-        this.commandExecutor.getRelevantCommits()
+        this.gitNavigator.getRelevantCommits()
           .then((commits) => {
             commits = commits.sort((commit1, commit2) => {
               if (commit1.relevance === undefined) {
@@ -91,7 +91,7 @@ class CommitViewer {
           "commit-view.js"
         );
         const scriptUri = panel.webview.asWebviewUri(scriptPath);
-        this.commandExecutor.getRelevantCommits(hash)
+        this.gitNavigator.getRelevantCommits(hash)
           .then((commits) => {
               panel.webview.html = Viewer.getCommitsHTML(
                 stylesheetUri,
@@ -130,7 +130,7 @@ class CommitViewer {
         const scriptUri = panel.webview.asWebviewUri(scriptPath);
         
         // first step is to get the relevance of line blamed for each
-        this.commandExecutor.getTrackedDirectories().then((directories) => {
+        this.gitNavigator.getTrackedDirectories().then((directories) => {
           vscode.window.showInformationMessage(directories.toString());
           panel.webview.html = Viewer.getDirectoryHTML(stylesheetUri, scriptUri, directories);
           // panel.webview.html = this.getVisualizationHtml(stylesheetUri, fileRelevances);
@@ -147,34 +147,8 @@ class CommitViewer {
    * Handles messages received from the webview. It checks the command type and executes the corresponding command.
    */
   handleMessage(message: any) {
-    vscode.window.showInformationMessage("Handling message from webview");
-    if (message.command === "openDiffFile") {
-      this.commandExecutor.executeDiffCommand(message);
-    }
-    if (message.command === "checkoutCommit") {
-      vscode.window.showInformationMessage(
-        "Checkout commit command Message received in webview"
-      );
-      const hash: string = message.hash;
-      this.commandExecutor.executeCheckoutCommand(hash);
-    }
-    if (message.command === "openDirectoryVisualization") {
-      vscode.window.showInformationMessage("Open directory visualization command Message received in webview");
-      if (this.visualizationPanel === undefined) {
-        console.error("Visualization panel is undefined");
-        return;
-      }
-      this.commandExecutor.getLineRelevance(message.directory === "."?"":message.directory).then((fileRelevances) => {
-        if (this.visualizationPanel === undefined) {
-          console.error("Visualization panel is undefined");
-          return;
-        }
-        this.visualizationPanel.webview.postMessage(
-          {directory: message.directory,
-            fileRelevances: fileRelevances}
-          );
-      });
-    }
+    
+    
   }
 
   /**
