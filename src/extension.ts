@@ -13,8 +13,11 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   const commitViewer = new CommitViewer(context);
-  context.subscriptions.push(commitViewer.showCommitsCommand);
-  context.subscriptions.push(commitViewer.showCommitCommand);
+  context.subscriptions.push(
+    commitViewer.showCommitsCommand, 
+    commitViewer.showCommitCommand,
+    commitViewer.visualizeLinesCommand
+  );
 
   const hoverProvider = vscode.languages.registerHoverProvider({ scheme: 'file' }, {
     async provideHover(document, position, token) {

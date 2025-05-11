@@ -14,7 +14,8 @@
 			],
 			"outFiles": [
 			],
-			"preLaunchTask": "${defaultBuildTask}"
+			"preLaunchTask": "${defaultBuildTask}",
+			"sourceMaps": false,
 		}
 	]
 }

@@ -11,6 +11,7 @@
   ],
   "activationEvents": [
     "onCommand:extension.showCommit",
+    "onCommand:extension.visualizeLines",
     "onLanguage:plaintext",
     "onLanguage:javascript",
     "onLanguage:typescript",
@@ -25,6 +26,23 @@
         "title": "Show Relevant Commits",
         "category": ""
       },
+      {
+      
+        "command": "contextawareversioncontrol.visualizeLines",
+        "title": "Visualize Lines",
+        "category": ""
+      },
+      {
+        "command": "contextawareversioncontrol.showCommitDetails",
+        "title": "Show Commit Details",
+        "category": ""
+      },
+      {
+        "command": "contextawareversioncontrol.showCommitDiff",
+        "title": "Show Commit Diff",
+        "category": ""
+      },
+
       {
         "command": "contextawareversioncontrol.showCommit",
         "title": "Show Specific Commit",
