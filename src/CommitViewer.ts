@@ -12,7 +12,9 @@ interface CommitInfo {
 class CommitViewer {
   showCommitsCommand: vscode.Disposable;
   showCommitCommand: vscode.Disposable;
+  visualizeLinesCommand: vscode.Disposable;
   commandExecutor: CommandExecutor;
+  visualizationPanel: vscode.WebviewPanel | undefined;
 
   constructor(context: vscode.ExtensionContext) {
     this.commandExecutor = new CommandExecutor(context, this);
@@ -98,6 +100,103 @@ class CommitViewer {
             });
 
           });
+
+    this.visualizeLinesCommand = vscode.commands.registerCommand(
+      "contextawareversioncontrol.visualizeLines",
+      () => {
+        vscode.window.showInformationMessage("Showing relevant commits");
+        const panel = this.createWebviewPanel(
+          context,
+          "visualizeLines",
+          "Visualize Lines"
+        );
+        this.visualizationPanel = panel;
+        panel.webview.onDidReceiveMessage(this.handleMessage);
+
+        const stylesheetPath = vscode.Uri.joinPath(
+          context.extensionUri,
+          "media",
+          "commit-view.css"
+        );
+        const stylesheetUri = panel.webview.asWebviewUri(stylesheetPath);
+
+        const scriptPath = vscode.Uri.joinPath(
+          context.extensionUri,
+          "media",
+          "commit-view.js"
+        );
+
+        const scriptUri = panel.webview.asWebviewUri(scriptPath);
+        
+        // first step is to get the relevance of line blamed for each
+        this.commandExecutor.getTrackedDirectories().then((directories) => {
+          vscode.window.showInformationMessage(directories.toString());
+          panel.webview.html = this.getDirectoryVisualizationHtml(stylesheetUri, scriptUri, directories);
+          // panel.webview.html = this.getVisualizationHtml(stylesheetUri, fileRelevances);
+        });
+    });
+  }
+  getDirectoryVisualizationHtml(stylesheetUri: vscode.Uri, scriptUri: vscode.Uri, directories: string[]): string {
+    console.log("In getVisualizationHtml");
+    console.log("script URI: ", scriptUri);
+    return `<!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="${stylesheetUri}" rel="stylesheet">
+            <script src="${scriptUri}"></script>
+            <title>Line Visualization</title>
+          </head>
+          <body> <div class="visualization-container">` + 
+          directories.map((directory) => {
+            return `
+              <div class = "directory-container" id="${directory===""?".":directory}">
+              <h2 class = "big-heading" onclick="openDirectoryVisualization('${directory===""?".":directory}')">${directory===""?".":directory}</h3>
+              </div>
+              `;
+            }).join("") + 
+          `</div></body>
+        </html>`;
+  }
+
+  getVisualizationHtml(stylesheetUri: vscode.Uri,fileRelevances: { [fileName: string]: any[]; }): string {
+    console.log("In getVisualizationHtml");
+    return `<!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="${stylesheetUri}" rel="stylesheet">
+            <title>Line Visualization</title>
+          </head>
+          <body> <div class="relevance-container">` + 
+          Object.keys(fileRelevances).map((fileName) => {
+            return `
+              <div class="file-container">
+              <h3 class = "small-heading">${fileName}</h3>
+              <div class="">
+                ${fileRelevances[fileName].map((commit, idx) => {
+                  // if (commit.relevance === 0) {
+                  //   return "";
+                  // }
+                  const background = 255 - Math.round(commit.relevance * 255);
+                  const color = `rgb(${background}, ${background}, ${background})`;
+                  return `<div class="line-relevance" style="background-color:${color}">`
+                    + `${commit.lineContent}`
+                  + `</div>`;
+                }).join("")
+                
+                }
+              </div>
+              </div>
+              `;
+
+          }).join("")
+          +
+          `</div></body>
+        </html>`;
+    throw new Error("Method not implemented.");
   }
     
 
@@ -107,6 +206,7 @@ class CommitViewer {
    * Handles messages received from the webview. It checks the command type and executes the corresponding command.
    */
   handleMessage(message: any) {
+    vscode.window.showInformationMessage("Handling message from webview");
     if (message.command === "openDiffFile") {
       this.commandExecutor.executeDiffCommand(message);
     }
@@ -116,6 +216,23 @@ class CommitViewer {
       );
       const hash: string = message.hash;
       this.commandExecutor.executeCheckoutCommand(hash);
+    }
+    if (message.command === "openDirectoryVisualization") {
+      vscode.window.showInformationMessage("Open directory visualization command Message received in webview");
+      if (this.visualizationPanel === undefined) {
+        console.error("Visualization panel is undefined");
+        return;
+      }
+      this.commandExecutor.getLineRelevance(message.directory === "."?"":message.directory).then((fileRelevances) => {
+        if (this.visualizationPanel === undefined) {
+          console.error("Visualization panel is undefined");
+          return;
+        }
+        this.visualizationPanel.webview.postMessage(
+          {directory: message.directory,
+            fileRelevances: fileRelevances}
+          );
+      });
     }
   }
 
