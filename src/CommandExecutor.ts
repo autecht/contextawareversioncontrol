@@ -162,12 +162,36 @@ class CommandExecutor {
 
     const output = await this.executeCommand(command);
     let commits = this.getCommitInfo(output);
+
     // if (hash === undefined) {
     //   commits = commits.slice(1, commits.length); // Remove the first commit
     // }
+
     const commitsRelevance = commits.map(async (commit) =>{
-      // const diffOut = await this.executeCommand(`git diff --no-color --unified=0 ${commit.hash}^ ${commit.hash}`);
-      const diffOut = await this.executeCommand(`git show ${commit.hash}`);
+      const diffOut = await this.executeCommand(`git diff --no-color --unified=0 ${commit.hash}`);
+
+      //get just the files changed between the current and the commit
+      const filesChanged = await this.executeCommand(`git diff --name-only ${commit.hash}`);
+      const filesChangedArr = filesChanged.split('\n');
+
+
+      for (const filePath of filesChangedArr.slice(0, filesChangedArr.length - 1)) {
+        const fs = require('fs').promises;
+
+        try {
+          await fs.access(filePath);
+          console.log(`${filePath} exists.`);
+        } catch {
+          console.log(`${filePath} does not exist.`);
+          continue;
+        }
+
+        const blameOut = await this.executeCommand(`git blame ${filePath}`);
+        const blameFileName = filePath.split('/').pop() + '_blame.txt';
+
+        await fs.writeFile(blameFileName, blameOut);
+      }
+
       const relevantLines:[number, string[][]] = findRelevancy(vscode.Uri.joinPath(
         this.context.extensionUri, "git-files", "test.diff").fsPath, 
         "", new Date(), 
@@ -182,6 +206,8 @@ class CommandExecutor {
     commits = commits.map((commit, idx) => {
       return {...commit, relevantLines: linesAndRelevance[idx][1], relevance: linesAndRelevance[idx][0]};
     });
+
+    console.log(commits);
 
     return commits;
   }
