@@ -5,6 +5,7 @@ import { CommitViewer, CommitInfo } from "./CommitViewer";
 import { findRelevancy } from "./findRelevancy.js";
 
 class CommandExecutor {
+  
   context: vscode.ExtensionContext;
   workspaceRoot: vscode.WorkspaceFolder | undefined;
   commitViewer: CommitViewer;
@@ -17,6 +18,69 @@ class CommandExecutor {
     }
     const workspaceRoot = workspaceFolders[0];
     this.workspaceRoot = workspaceRoot;
+  }
+
+
+  async getTrackedDirectories() {
+    const fileNamesOut = await this.executeCommand("git ls-files");
+    const fileNames = fileNamesOut.split("\n");
+    let directories = fileNames.map((fileName) => {
+      let parts = fileName.split("/");
+      parts.pop(); // Remove the last part (file name)
+      return parts.join("/");
+    });
+    directories = [...new Set(directories)];
+
+    console.log("Directories: ", directories);
+    return directories;
+    
+  }
+  async getLineRelevance(directory: string) {
+    // TODO: stopped here.  send message to panel, add event listener in webview, open appropriate directory
+    let commitRelevances: {[hash:string]: number} = {};
+    const allRelevances = await this.getRelevantCommits();
+    for (const commit of allRelevances) {
+      commitRelevances[commit.hash] = commit.relevance === undefined || Number.isNaN(commit.relevance) ? 0 : commit.relevance;
+    }
+    let fileRelevances: {[fileName: string]: any[]} = {};
+    // vscode.current
+    const fileNamesOut = await this.executeCommand("git ls-files");
+    for (const filename of fileNamesOut.split("\n")) {
+      let parts = filename.split("/");
+      parts.pop();
+      const directoryName = parts.join("/");
+      if (directoryName !== directory){
+        continue; // TODO: remove this line to get all files
+      }
+      if (filename.trim() === "") {
+        continue;
+      }
+      const blameOut = await this.executeCommand(`git blame ${filename}`);
+      const lines = blameOut.split("\n");
+      const content = lines.map((line) => line.split(/\d+\)/));
+      const hashesAndContent = content.map((line) => {
+        const hash = line[0].split(" ")[0];
+        const formattedHash = hash.startsWith("^")?hash.slice(1):hash.slice(0, -1);
+        const lineContent = line[1];
+        return { hash: formattedHash, lineContent: lineContent };
+      });
+
+      // const lines = blameOut.split("\n").map((line) => line.split(" "));
+      // const hashesResponsible = lines.map((line) => {
+      //   return line[0].startsWith("^")?line[0].slice(1):line[0].slice(0, -1);
+      //   }
+      // );
+      const relevanceOfResponsibleCommits = hashesAndContent.map((object) => {
+          // console.log("Hash: ", hash);
+          const relevance = commitRelevances[object.hash] === undefined?0: commitRelevances[object.hash];
+          // console.log("Relevance: ", relevance);
+          return {relevance: relevance, hash: object.hash, content: object.lineContent};
+      });
+   
+
+      fileRelevances[filename] = relevanceOfResponsibleCommits;
+    }
+    return fileRelevances;
   }
 
   async executeCommand(command: string): Promise<string> {
@@ -89,6 +153,7 @@ class CommandExecutor {
    * @returns Promise with array of CommitInfo objects representing each commit.
    */
   async getRelevantCommits(hash?: string): Promise<CommitInfo[]> {
+    console.log("In getRelevantCommits");
     const command =
       hash === undefined
         ? 'git log --pretty="%h "%s'
@@ -97,9 +162,10 @@ class CommandExecutor {
 
     const output = await this.executeCommand(command);
     let commits = this.getCommitInfo(output);
-    if (hash === undefined) {
-      commits = commits.slice(1, commits.length); // Remove the first commit
-    }
+
+    // if (hash === undefined) {
+    //   commits = commits.slice(1, commits.length); // Remove the first commit
+    // }
 
     const commitsRelevance = commits.map(async (commit) =>{
       const diffOut = await this.executeCommand(`git diff --no-color --unified=0 ${commit.hash}`);
