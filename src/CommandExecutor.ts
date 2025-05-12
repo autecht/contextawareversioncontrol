@@ -178,11 +178,12 @@ class CommandExecutor {
       for (const filePath of filesChangedArr.slice(0, filesChangedArr.length - 1)) {
         const fs = require('fs').promises;
 
+        const absFilePath = vscode.Uri.joinPath(this.workspaceRoot!.uri, filePath).fsPath;
         try {
-          await fs.access(filePath);
-          console.log(`${filePath} exists.`);
+          await fs.access(absFilePath);
+          console.log(`${absFilePath} is good.`);
         } catch {
-          console.log(`${filePath} does not exist.`);
+          console.log(`${absFilePath} does not exist.`);
           continue;
         }
 
