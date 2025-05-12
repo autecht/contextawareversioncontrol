@@ -2,6 +2,10 @@ import * as vscode from "vscode";
 import { exec } from "child_process";
 import * as util from "util";
 import { findRelevancy } from "./findRelevancy.js";
+
+/**
+ * Use git commands to extract information from git repo.
+ */
 class GitNavigator{
 
   context: vscode.ExtensionContext;
@@ -15,6 +19,9 @@ class GitNavigator{
     this.workspaceRoot = workspaceFolders[0];
   }
 
+  /**
+   * Execute command in workspace directory.
+   */
   static async executeCommand(context: vscode.ExtensionContext, command: string):Promise<string> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
@@ -37,12 +44,26 @@ class GitNavigator{
 
   }
 
+  /**
+   * Execute command in workspace directory
+   * 
+   * @param command command to be executed
+   * @returns Promise with string which is stdout from command
+   */
   async executeCommand(command: string):Promise<string> {
     const stdout = await GitNavigator.executeCommand(this.context, command);
     return stdout;
   }
 
-  async getTrackedDirectories() {
+  /**
+   * Retrieves a list of unique directories that contain tracked files in the Git repository.
+   *
+   * @returns A promise that resolves to an array of unique directory paths as strings, relative to project root.
+   *          Each path represents a directory containing at least one tracked file.
+   *
+   * @throws Will throw an error if the `git ls-files` command fails to execute.
+   */
+  async getTrackedDirectories(): Promise<string[]> {
     const fileNamesOut = await this.executeCommand("git ls-files");
     const fileNames = fileNamesOut.split("\n");
     let directories = fileNames.map((fileName) => {
@@ -52,17 +73,20 @@ class GitNavigator{
     });
     directories = [...new Set(directories)];
 
-    console.log("Directories: ", directories);
     return directories;
   }
 
+  /**
+   * checkout to commit given by @param hash
+   */
   async checkoutCommit(hash: string) {
     await this.executeCommand("git stash");
     await this.executeCommand(`git checkout ${hash}`);
   }
 
   /**
-     * 
+     * Retrieves commits from repo and evaluates their relevance.
+     *
      * @param hash: hash of specific commit to retrieve. If undefined, retrieves all commits except initial commit.
      * @returns Promise with array of CommitInfo objects representing each commit.
      */
@@ -122,6 +146,26 @@ class GitNavigator{
       return commits;
     }
 
+  
+  /**
+   * Analyzes the relevance of each line in files within a specified directory
+   * based on the relevance of the commits responsible for those lines.
+   *
+   * @param directory - The directory to filter files by. Only files within this directory
+   * will be processed. To include all files, remove the directory filtering logic.
+   * 
+   * @returns A promise that resolves to an object where each key is a file name and the value
+   * is an array of objects representing the relevance of each line in the file. Each object
+   * contains:
+   * - `relevance`: The relevance score of the commit responsible for the line.
+   * - `hash`: The hash of the commit responsible for the line.
+   * - `content`: The content of the line.
+   *
+   * @remarks
+   * - If a commit's relevance is undefined or not a number, it defaults to 0.
+   * 
+   * @throws Will throw an error if any Git command fails.
+   */
   async getLineRelevance(directory: string) {
       let commitRelevances: {[hash:string]: number} = {};
       const allRelevances = await this.getRelevantCommits();
@@ -177,9 +221,13 @@ class GitNavigator{
     return commits;
   }
   
-  async getFilesChanged(message: CommitInfo) {
+
+  /**
+   * get files changed from a commit.
+   */
+  async getFilesChanged(commit: CommitInfo) {
     const output = await this.executeCommand(
-      `git diff-tree --no-commit-id --name-only -r ${message.hash}`
+      `git diff-tree --no-commit-id --name-only -r ${commit.hash}`
     );
     const filesChanged = output
       .split("\n")
@@ -187,8 +235,16 @@ class GitNavigator{
     return filesChanged;
   }
   
-  async openChangedFileDiffs(message: CommitInfo) {
-    const filesChanged = await this.getFilesChanged(message);
+
+  
+  /**
+   * Opens the vscode diff views for files changed in a specific commit.
+   *
+   * @param commit - The commit information containing details such as the commit hash.
+   * @returns A promise that resolves when all diff views have been opened or if no action is taken.
+   */
+  async openChangedFileDiffs(commit: CommitInfo): Promise<void> {
+    const filesChanged = await this.getFilesChanged(commit);
     if (filesChanged.length === 0) {
       vscode.window.showInformationMessage("No files changed in this commit.");
       return;
@@ -202,7 +258,7 @@ class GitNavigator{
       const absolute = vscode.Uri.joinPath(this.workspaceRoot.uri, file);
       const params = {
         path: absolute.fsPath,
-        ref: message.hash,
+        ref: commit.hash,
       };
       const path = absolute.path;
 
@@ -217,17 +273,35 @@ class GitNavigator{
         "vscode.diff",
         gitUri,
         absolute,
-        `Diff ${file}: ${message.hash} -> present`
+        `Diff ${file}: ${commit.hash} -> present`
       );
     }
   }
   
 }
 
+/**
+ * Represents information about a Git commit.
+ * 
+ * @interface CommitInfo
+ * 
+ * @property {string} hash
+ * The unique hash identifier of the commit.
+ * 
+ * @property {string} message
+ * The commit message describing the changes made in the commit.
+ * 
+ * @property {number} [relevance]
+ * An optional value indicating the relevance of the commit, such that 0 is not relevant and 1 is highly relevant.
+ * 
+ * @property {string[][]} [relevantLines]
+ * An optional array of string arrays, where each inner array represents
+ * 10 lines of content most relevant to the commit.
+ */
 interface CommitInfo {
   hash: string;
   message: string;
   relevance?:number;
-  relevantLines?: string[][]; // Array of string arrays, where each string array contains two strings: filename changed and line content of relevant line changed
+  relevantLines?: string[][]; 
 }
 export { GitNavigator, CommitInfo};

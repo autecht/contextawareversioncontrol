@@ -2,10 +2,14 @@ import * as vscode from "vscode";
 import { GitNavigator } from "./GitNavigator";
 import { Viewer } from "./Viewer";
 
+
+/**
+ * Represents extension command with associated webview.
+ */
 class Command {
-  gitNavigator: GitNavigator;
-  context: vscode.ExtensionContext;
-  mediaFileName: string;
+  gitNavigator: GitNavigator; // GitNavigator to obtain necessary information from git repo.
+  context: vscode.ExtensionContext; // this extension's ExtensionContext
+  mediaFileName: string; // name of script and stylesheet without extension in media folder
   constructor(
     context: vscode.ExtensionContext,
     mediaFileName: string,
@@ -17,7 +21,12 @@ class Command {
     this.mediaFileName = mediaFileName;
   }
 
-  getUris(panel: vscode.WebviewPanel) {
+  /**
+   *
+   * @param panel panel created for this command's webview
+   * @returns uris of stylesheet and javascript file for webview of this command.
+   */
+  getUris(panel: vscode.WebviewPanel): vscode.Uri[] {
     const stylesheetPath = vscode.Uri.joinPath(
       this.context.extensionUri,
       "media",
@@ -34,7 +43,14 @@ class Command {
     return [stylesheetUri, scriptUri];
   }
 
-  createWebviewPanel(identifier: string, title: string) {
+  /**
+   * Create initial webview for command.
+   *
+   * @param identifier: unique identifier to access command.
+   * @param title: visible title of command and webview.
+   * @returns panel of blank webview.
+   */
+  createWebviewPanel(identifier: string, title: string): vscode.WebviewPanel {
     const panel = vscode.window.createWebviewPanel(
       identifier,
       title,
@@ -49,6 +65,17 @@ class Command {
     return panel;
   }
 
+  
+  /**
+   * Handles incoming messages and executes corresponding commands.
+   *
+   * @param message - The message object containing the command and any associated data.
+   * 
+   * Supported commands:
+   * - `openDiffFile`: Opens the diff view for changed files using the `gitNavigator`.
+   * - `checkoutCommit`: Checks out a specific commit by its hash and displays an information message.
+   *   - `message.hash` (string): The hash of the commit to be checked out.
+   */
   handleMessage(message: any) {
     if (message.command === "openDiffFile") {
       this.gitNavigator.openChangedFileDiffs(message);
@@ -63,7 +90,13 @@ class Command {
   }
 }
 
+/**
+ * Command to visualize all commits in the repo.
+ */
 class RelevantCommitsVisualization extends Command {
+  /**
+   * Disposable to be pushed to extension.
+   */
   command: vscode.Disposable;
   constructor(
     context: vscode.ExtensionContext,
@@ -101,7 +134,14 @@ class RelevantCommitsVisualization extends Command {
   }
 }
 
+
+/**
+ * Command to show information and relevance about a single commit and allow checkout and opening diff files.
+ */
 class RelevantCommitVisualization extends Command {
+  /**
+    * Command to be pushed to extension.
+   */
   command: vscode.Disposable;
   constructor(
     context: vscode.ExtensionContext,
@@ -141,7 +181,13 @@ class RelevantCommitVisualization extends Command {
   }
 }
 
+/**
+ * Command to visualize relevance of each line of any tracked files. 
+ */
 class LinesRelevanceVisualization extends Command {
+  /**
+    * Command to be pushed to extension.
+   */
   command: vscode.Disposable;
   panel: vscode.WebviewPanel | undefined;
   constructor(
@@ -162,7 +208,7 @@ class LinesRelevanceVisualization extends Command {
         const uris = this.getUris(panel);
 
         this.gitNavigator.getTrackedDirectories().then((directories) => {
-          panel.webview.html = Viewer.getDirectoryHTML(
+          panel.webview.html = Viewer.getDirectoryListingHTML(
             uris[0],
             uris[1],
             directories
@@ -172,6 +218,18 @@ class LinesRelevanceVisualization extends Command {
     );
   }
 
+  /**
+   * Handles incoming messages and processes commands accordingly.
+   *
+   * @param message - The message object containing the command and additional data.
+   * 
+   * Commands:
+   * - `"openDirectoryVisualization"`: Processes the directory visualization request.
+   *   - Retrieves file relevance data for the specified directory and sends it to the webview.
+   * 
+   * @remarks
+   * - If the `directory` in the message is `"."`, it is treated as the root directory.
+   */
   handleMessage(message: any) {
     if (message.command === "openDirectoryVisualization") {
       vscode.window.showInformationMessage(

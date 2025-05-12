@@ -1,6 +1,22 @@
 import * as vscode from "vscode";
 import {CommitInfo} from "./GitNavigator";
+
+/**
+ * The `Viewer` class provides utility methods to generate HTML content for webviews.
+ * - The `Viewer` class assumes that the provided URIs and data are valid and properly formatted.
+ * - The generated HTML includes inline event handlers (e.g., `onclick`) for interactivity, which may require corresponding JavaScript functions to be defined in the included script.
+ */
 class Viewer {
+  
+  /**
+    * 
+    * Generates a complete HTML document by embedding a stylesheet, script, and body content.
+    * 
+    * @param stylesheetUri: URI of the CSS stylesheet to include in the webview.
+    * @param scriptUri: URI of the JavaScript file to include in the webview.
+    * @param innerHTML: The HTML content to be placed inside the `<body>` tag.
+    * @returns A string containing the complete HTML document.
+   */
   static insertIntoOuterHTML(
     stylesheetUri: vscode.Uri,
     scriptUri: vscode.Uri,
@@ -21,7 +37,17 @@ class Viewer {
             </html>`;
   }
 
-  static getDirectoryHTML(
+
+
+/**
+ * Generates HTML content for initial line relevance visualization webview.
+ * 
+ * @param stylesheetUri: URI of the CSS stylesheet to include in the webview.
+ * @param scriptUri: URI of the JavaScript file to include in the webview.
+ * @param directories: An array of tracked directories which will be displayed
+ * @returns string containing HTML document with clickable directories listed.
+ */
+  static getDirectoryListingHTML(
     stylesheetUri: vscode.Uri,
     scriptUri: vscode.Uri,
     directories: string[]
@@ -47,14 +73,16 @@ class Viewer {
     return Viewer.insertIntoOuterHTML(stylesheetUri, scriptUri, innerHTML);
   }
 
+
+
   /**
-         * Generates html content of webview to display each commit.
-         * 
-         * @param stylesheetSrc uri of stylesheet used by webview
-        
-         * @param stdout output of command used for getting commit message
-         * @returns html string to be displayed in webview
-    */
+   * Generates HTML content for relevant commit(s) webview.
+   * 
+   * @param stylesheetUri: URI of the CSS stylesheet to include in the webview.
+   * @param scriptUri: URI of the JavaScript file to include in the webview.
+   * @param commits: An array of commit information objects, each containing a hash, message, and relevant lines.
+   * @returns string containing HTML document with each commit visualized.
+   */
   static getCommitsHTML(
     stylesheetUri: vscode.Uri,
     scriptUri: vscode.Uri,
