@@ -51,7 +51,7 @@ class Command {
 
   handleMessage(message: any) {
     if (message.command === "openDiffFile") {
-      this.gitNavigator.executeDiffCommand(message);
+      this.gitNavigator.openChangedFileDiffs(message);
     }
     if (message.command === "checkoutCommit") {
       vscode.window.showInformationMessage(

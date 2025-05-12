@@ -177,19 +177,23 @@ class GitNavigator{
     });
     return commits;
   }
-  async executeDiffCommand(message: CommitInfo) {
+  
+  async getFilesChanged(message: CommitInfo) {
     const output = await this.executeCommand(
       `git diff-tree --no-commit-id --name-only -r ${message.hash}`
     );
     const filesChanged = output
       .split("\n")
       .filter((file) => file.trim() !== "");
+    return filesChanged;
+  }
+  
+  async openChangedFileDiffs(message: CommitInfo) {
+    const filesChanged = await this.getFilesChanged(message);
     if (filesChanged.length === 0) {
       vscode.window.showInformationMessage("No files changed in this commit.");
       return;
     }
-
-
     if (!this.workspaceRoot) {
       console.log("No workspace root found.");
       return;
@@ -197,7 +201,6 @@ class GitNavigator{
 
     for (const file of filesChanged) {
       const absolute = vscode.Uri.joinPath(this.workspaceRoot.uri, file);
-      // For files in the repo root
       const params = {
         path: absolute.fsPath,
         ref: message.hash,
