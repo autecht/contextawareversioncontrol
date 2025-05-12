@@ -13,7 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
     'Congratulations, your extension "contextawareversioncontrol" is now active!'
   );
 
-  const lineRelevanceVisualization = new LinesRelevanceVisualization(context, "commit-view", "visualizeLines", "Visualize Lines");
+  const lineRelevanceVisualization = new LinesRelevanceVisualization(context, "line-relevance", "visualizeLines", "Visualize Lines");
   const commitVisualization = new RelevantCommitVisualization(context, "commit-view", "showCommit", "Show Commit");
   const commitsVisualization = new RelevantCommitsVisualization(context, "commit-view", "showCommits", "Show Commits");
   context.subscriptions.push(
