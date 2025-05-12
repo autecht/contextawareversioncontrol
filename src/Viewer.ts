@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
-import { CommitInfo } from "./CommitViewer";
-
+import {CommitInfo} from "./GitNavigator";
 class Viewer {
   static insertIntoOuterHTML(
     stylesheetUri: vscode.Uri,

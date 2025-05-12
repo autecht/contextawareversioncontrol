@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import { exec } from "child_process";
 import * as util from "util";
-import { CommitViewer, CommitInfo } from "./CommitViewer";
 import { findRelevancy } from "./findRelevancy.js";
 class GitNavigator{
 
@@ -225,4 +224,10 @@ class GitNavigator{
   
 }
 
-export { GitNavigator };
+interface CommitInfo {
+  hash: string;
+  message: string;
+  relevance?:number;
+  relevantLines?: string[][]; // Array of string arrays, where each string array contains two strings: filename changed and line content of relevant line changed
+}
+export { GitNavigator, CommitInfo};
