@@ -13,7 +13,7 @@ window.addEventListener('message', (event) => {
     Object.keys(fileRelevances).map((fileName) => {
             return `
               <div class="file-container">
-              <h3 class = "small-heading">${fileName}</h3>
+              <h3 class = "small-heading" onclick="openFile('${fileName}')">${fileName}</h3>
               <div class="">
                 ${fileRelevances[fileName].map((commit, idx) => {
                   const background = 255 - Math.round(commit.relevance * 255);
@@ -24,6 +24,13 @@ window.addEventListener('message', (event) => {
                 }).join("")}
               </div> </div>`;}).join("") + '</div>';
 });
+
+function openFile(fileName) {
+  vscode.postMessage({
+    command: "openFile",
+    fileName: fileName
+  });
+}
 
 function openDirectoryVisualization(dir) {
   vscode.postMessage({

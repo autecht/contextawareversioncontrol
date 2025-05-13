@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as path from 'path';
 import { GitNavigator } from "./GitNavigator";
 import { Viewer } from "./Viewer";
 
@@ -251,6 +252,28 @@ class LinesRelevanceVisualization extends Command {
             fileRelevances: fileRelevances,
           });
         });
+    }
+    if (message.command === "openFile") {
+      const relativePath = message.fileName;
+      const workspace = vscode.workspace.workspaceFolders;
+      if (workspace === undefined) {
+        vscode.window.showErrorMessage("No workspace open");
+        return;
+      }
+      const projectRoot = workspace[0].uri.fsPath;
+      const absolutePath = path.join(projectRoot, relativePath);
+      const fileUri = vscode.Uri.file(absolutePath);
+      try{
+        vscode.workspace.openTextDocument(fileUri).then(
+          (document) => {
+            vscode.window.showTextDocument(document, {preview: false});
+          }
+        );
+        
+      
+      }catch{
+      
+      }
     }
   }
 }
