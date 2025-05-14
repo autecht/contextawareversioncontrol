@@ -204,8 +204,11 @@ class CommandExecutor {
 
     const linesAndRelevance = await Promise.all(commitsRelevance);
 
+    const justRelevance = linesAndRelevance.map(item => item[0]);
+    const maxRelevance = Math.max(...justRelevance);
+
     commits = commits.map((commit, idx) => {
-      return {...commit, relevantLines: linesAndRelevance[idx][1], relevance: linesAndRelevance[idx][0]};
+      return {...commit, relevantLines: linesAndRelevance[idx][1], relevance: linesAndRelevance[idx][0] / maxRelevance};
     });
 
     console.log(commits);
