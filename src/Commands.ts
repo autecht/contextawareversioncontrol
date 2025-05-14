@@ -61,6 +61,7 @@ class Command {
         localResourceRoots: [
           vscode.Uri.joinPath(this.context.extensionUri, "media"),
         ],
+        retainContextWhenHidden: true,
       }
     );
     return panel;
