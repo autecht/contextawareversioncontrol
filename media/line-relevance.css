@@ -32,3 +32,9 @@
   overflow-wrap: break-word; /* preferred modern form */
   word-break: break-word;    /* optional for extra stubborn cases */
 }
+
+.row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}

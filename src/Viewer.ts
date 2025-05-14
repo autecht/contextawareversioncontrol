@@ -57,14 +57,15 @@ class Viewer {
       <div class="visualization-container">` +
       directories
         .map((directory) => {
+          const adjustedDirectory = directory === ""? "root":directory;
           return `
               <div class = "directory-container" id="${
-                directory === "" ? "." : directory
+                adjustedDirectory
               }">
-              <h2 class = "big-heading" onclick="openDirectoryVisualization('${
-                directory === "" ? "." : directory
+            <div id = "${adjustedDirectory}-heading-container" class="row"> <h2 class = "big-heading" onclick="openDirectoryVisualization('${
+                adjustedDirectory
               }')">${directory === "" ? "." : directory}</h3>
-              </div>
+              </div> </div>
               `;
         })
         .join("") +

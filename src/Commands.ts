@@ -241,8 +241,9 @@ class LinesRelevanceVisualization extends Command {
         console.error("Visualization panel is undefined");
         return;
       }
+      const adjustedDirectory = message.directory === ""? "root":message.directory;
       this.gitNavigator
-        .getLineRelevance(message.directory === "." ? "" : message.directory)
+        .getLineRelevance(adjustedDirectory)
         .then((fileRelevances) => {
           if (this.panel === undefined) {
             console.error("Visualization panel is undefined");

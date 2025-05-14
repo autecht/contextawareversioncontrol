@@ -8,8 +8,10 @@ window.addEventListener('message', (event) => {
   const element = document.getElementById(directory);
   console.log("Directory", directory);
   console.log("element", element);
+
+  // add file content to directory
   document.getElementById(directory).innerHTML += 
-    '<div class="relevance-container">' + 
+    `<div id="${directory}-relevance-container" class="relevance-container">` + 
     Object.keys(fileRelevances).map((fileName) => {
             return `
               <div class="file-container">
@@ -23,7 +25,22 @@ window.addEventListener('message', (event) => {
                   + `</div>`;
                 }).join("")}
               </div> </div>`;}).join("") + '</div>';
+    
+    // add dropup button
+    document.getElementById(`${directory}-heading-container`).innerHTML +=
+    `<button class="up-button" id="${directory}-up-button" onclick="removeFiles('${directory}')">↑</button>`;
 });
+
+function removeFiles(directory) {
+  const button = document.getElementById(`${directory}-up-button`);
+  if (button) {
+    button.remove();
+  }
+  const directoryFiles = document.getElementById(`${directory}-relevance-container`);
+  if (directoryFiles) {
+    directoryFiles.remove();
+  }
+}
 
 function openFile(fileName) {
   vscode.postMessage({
