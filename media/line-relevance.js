@@ -19,8 +19,8 @@ window.addEventListener('message', (event) => {
               <h3 class = "small-heading" onclick="openFile('${fileName}')">${fileName}</h3>
               <div class="">
                 ${fileRelevances[fileName].map((commit, idx) => {
-                  const background = 255 - Math.round(commit.relevance * 255);
-                  const color = `rgb(${background}, ${background}, ${background})`;
+                  const hue = (1 - commit.relevance) * 240;
+                  const color = `hsla(${hue}, 100%, 50%, 0.5)`;
                   return `<div class="line-relevance" style="background-color:${color}">`
                     + `${commit.content}`
                   + `</div>`;
