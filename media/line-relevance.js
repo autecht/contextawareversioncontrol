@@ -4,14 +4,15 @@ const vscode = acquireVsCodeApi();
 window.addEventListener('message', (event) => {
   console.log("Event", event);
   const directory = event.data.directory;
+  const adjustedDirectory = directory === ""?"root":directory;
   const fileRelevances = event.data.fileRelevances;
-  const element = document.getElementById(directory);
+  const element = document.getElementById(adjustedDirectory);
   console.log("Directory", directory);
   console.log("element", element);
 
   // add file content to directory
-  document.getElementById(directory).innerHTML += 
-    `<div id="${directory}-relevance-container" class="relevance-container">` + 
+  element.innerHTML += 
+    `<div id="${adjustedDirectory}-relevance-container" class="relevance-container">` + 
     Object.keys(fileRelevances).map((fileName) => {
             return `
               <div class="file-container">
@@ -27,8 +28,8 @@ window.addEventListener('message', (event) => {
               </div> </div>`;}).join("") + '</div>';
     
     // add dropup button
-    document.getElementById(`${directory}-heading-container`).innerHTML +=
-    `<button class="up-button" id="${directory}-up-button" onclick="removeFiles('${directory}')">↑</button>`;
+    document.getElementById(`${adjustedDirectory}-heading-container`).innerHTML +=
+    `<button class="up-button" id="${adjustedDirectory}-up-button" onclick="removeFiles('${adjustedDirectory}')">↑</button>`;
 });
 
 function removeFiles(directory) {
@@ -50,6 +51,9 @@ function openFile(fileName) {
 }
 
 function openDirectoryVisualization(dir) {
+  if (dir === "root") {
+    dir = "";
+  }
   vscode.postMessage({
     command: 'openDirectoryVisualization',
     directory: dir
