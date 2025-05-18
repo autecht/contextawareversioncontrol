@@ -108,24 +108,24 @@ class GitNavigator{
         const filesChanged = await this.executeCommand(`git diff --name-only ${commit.hash}`);
         const filesChangedArr = filesChanged.split('\n');
   
-  
         for (const filePath of filesChangedArr.slice(0, filesChangedArr.length - 1)) {
           const fs = require('fs').promises;
-  
+
+          const absFilePath = vscode.Uri.joinPath(this.workspaceRoot!.uri, filePath).fsPath;
           try {
-            await fs.access(filePath);
-            console.log(`${filePath} exists.`);
+            await fs.access(absFilePath);
+            console.log(`${absFilePath} is good.`);
           } catch {
-            console.log(`${filePath} does not exist.`);
+            console.log(`${absFilePath} does not exist.`);
             continue;
           }
-  
+
           const blameOut = await this.executeCommand(`git blame ${filePath}`);
           const blameFileName = filePath.split('/').pop() + '_blame.txt';
-  
+
           await fs.writeFile(blameFileName, blameOut);
         }
-  
+
         const relevantLines:[number, string[][]] = findRelevancy(vscode.Uri.joinPath(
           this.context.extensionUri, "git-files", "test.diff").fsPath, 
           "", new Date(), 
@@ -134,15 +134,18 @@ class GitNavigator{
           diffOut) as [number, string[][]];
         return relevantLines;
       }); 
-  
+
       const linesAndRelevance = await Promise.all(commitsRelevance);
-  
+
+      const justRelevance = linesAndRelevance.map(item => item[0]);
+      const maxRelevance = Math.max(...justRelevance);
+
       commits = commits.map((commit, idx) => {
-        return {...commit, relevantLines: linesAndRelevance[idx][1], relevance: linesAndRelevance[idx][0]};
+        return {...commit, relevantLines: linesAndRelevance[idx][1], relevance: linesAndRelevance[idx][0] / maxRelevance};
       });
-  
+
       console.log(commits);
-  
+
       return commits;
     }
 
