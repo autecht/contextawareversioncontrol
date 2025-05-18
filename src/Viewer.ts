@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import {CommitInfo} from "./GitNavigator";
+import {metrics} from "./Commands";
 
 /**
  * The `Viewer` class provides utility methods to generate HTML content for webviews.
@@ -52,9 +53,15 @@ class Viewer {
     scriptUri: vscode.Uri,
     directories: string[]
   ): string {
+    
     const innerHTML =
       `
-      <div class="visualization-container">` +
+      <div class="visualization-container">
+      
+      <div class = "row">`  +
+        Object.values(metrics).map((metric)=> `<button onclick="chooseMetric('${metric}')">${metric}</button>`).join("") + 
+      `</div>
+      ` +
       directories
         .map((directory) => {
           const adjustedDirectory = directory === ""? "root":directory;

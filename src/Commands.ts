@@ -243,7 +243,7 @@ class LinesRelevanceVisualization extends Command {
       }
       const adjustedDirectory = message.directory;
       this.gitNavigator
-        .getLineRelevance(adjustedDirectory)
+        .getLineRelevance(adjustedDirectory, message.metric)
         .then((fileRelevances) => {
           if (this.panel === undefined) {
             console.error("Visualization panel is undefined");
@@ -280,9 +280,14 @@ class LinesRelevanceVisualization extends Command {
   }
 }
 
+enum metrics {
+  relevance = "relevance",
+  recency = "recency",}
+
 export {
   Command,
   LinesRelevanceVisualization,
   RelevantCommitVisualization,
   RelevantCommitsVisualization,
+  metrics
 };

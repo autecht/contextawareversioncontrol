@@ -1,5 +1,5 @@
 const vscode = acquireVsCodeApi();
-
+let currentMetric = "relevance";
 
 window.addEventListener('message', (event) => {
   console.log("Event", event);
@@ -56,6 +56,11 @@ function openDirectoryVisualization(dir) {
   }
   vscode.postMessage({
     command: 'openDirectoryVisualization',
-    directory: dir
+    directory: dir,
+    metric: currentMetric
   });
+}
+
+function chooseMetric(metric) {
+  currentMetric = metric;
 }

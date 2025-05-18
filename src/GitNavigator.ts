@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { exec } from "child_process";
 import * as util from "util";
 import { findRelevancy } from "./findRelevancy.js";
+import { metrics } from "./Commands.js";
 
 /**
  * Use git commands to extract information from git repo.
@@ -147,6 +148,22 @@ class GitNavigator{
     }
 
   
+
+  private async getResponsibleCommitsAndContent(filename: string) {
+        
+        const blameOut = await this.executeCommand(`git blame ${filename}`);
+        const lines = blameOut.split("\n");
+        const content = lines.map((line) => line.split(/\d+\)/)); 
+        const hashesAndContent = content.map((line) => {
+          const hash = line[0].split(" ")[0];
+          const formattedHash = hash.startsWith("^")?hash.slice(1):hash.slice(0, -1);
+          const lineContent = line[1];
+          return { hash: formattedHash, lineContent: lineContent };
+        });
+        return hashesAndContent;
+  }
+
+
   /**
    * Analyzes the relevance of each line in files within a specified directory
    * based on the relevance of the commits responsible for those lines.
@@ -166,9 +183,50 @@ class GitNavigator{
    * 
    * @throws Will throw an error if any Git command fails.
    */
-  async getLineRelevance(directory: string) {
+  async getLineRelevance(directory: string, metric: string) {
+
       let commitRelevances: {[hash:string]: number} = {};
-      const allRelevances = await this.getRelevantCommits();
+      let allRelevances;
+      if (metric === metrics.recency) {
+        console.log("In recency metric");
+        const now = new Date();
+        const command ='git log --pretty="%h "%s';
+        const output = await this.executeCommand(command);
+        let commits = this.parseCommits(output);
+        let maxTimePassed = 0;
+        let minTimePassed = Number.MAX_VALUE;
+        let commitsWithRelevancePromise = commits.map(async (commit) =>{
+          
+          // use executeCommand to get date of commit
+
+          let dateOut = await this.executeCommand(`git show -s --format=%ci ${commit.hash}`);
+          console.log("Here is the dateOut", dateOut);
+          dateOut = dateOut.replace(/ -\d{4}$/, "");
+          const commitDate  = new Date(dateOut);
+          const timePassed = now.getTime() - commitDate.getTime();
+          if (timePassed > maxTimePassed){
+            maxTimePassed = timePassed;
+          }
+          if (timePassed < minTimePassed){
+            minTimePassed = timePassed;
+          }
+          return {...commit, relevance: timePassed};
+        }); 
+
+        let commitsWithRelevance = await Promise.all(commitsWithRelevancePromise);
+        commitsWithRelevance = commitsWithRelevance.map((commit) => {
+          // console.log("Here is the commit relevance", commit.relevance);
+          commit.relevance = (maxTimePassed - commit.relevance) / (maxTimePassed - minTimePassed);
+          console.log("Here is the new commit relevance", commit.relevance);
+          return commit;
+        });
+    
+        allRelevances=  commitsWithRelevance;
+      }
+      else {
+        allRelevances = await this.getRelevantCommits()
+      }
+      
       for (const commit of allRelevances) {
         commitRelevances[commit.hash] = commit.relevance === undefined || Number.isNaN(commit.relevance) ? 0 : commit.relevance;
       }
@@ -184,19 +242,10 @@ class GitNavigator{
         if (filename.trim() === "") {
           continue;
         }
-        const blameOut = await this.executeCommand(`git blame ${filename}`);
-        const lines = blameOut.split("\n");
-        const content = lines.map((line) => line.split(/\d+\)/));
-        const hashesAndContent = content.map((line) => {
-          const hash = line[0].split(" ")[0];
-          const formattedHash = hash.startsWith("^")?hash.slice(1):hash.slice(0, -1);
-          const lineContent = line[1];
-          return { hash: formattedHash, lineContent: lineContent };
-        });
+        const hashesAndContent = await this.getResponsibleCommitsAndContent(filename);
+        
         const relevanceOfResponsibleCommits = hashesAndContent.map((object) => {
-            // console.log("Hash: ", hash);
             const relevance = commitRelevances[object.hash] === undefined?0: commitRelevances[object.hash];
-            // console.log("Relevance: ", relevance);
             return {relevance: relevance, hash: object.hash, content: object.lineContent};
         });
      
