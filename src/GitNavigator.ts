@@ -168,40 +168,20 @@ class GitNavigator{
 
 
   /**
-   * Analyzes the relevance of each line in files within a specified directory
-   * based on the relevance of the commits responsible for those lines.
+   * Retrieves the recency of commits in the repo as a number between 0 and 1.
    *
-   * @param directory - The directory to filter files by. Only files within this directory
-   * will be processed. To include all files, remove the directory filtering logic.
-   * 
-   * @returns A promise that resolves to an object where each key is a file name and the value
-   * is an array of objects representing the relevance of each line in the file. Each object
-   * contains:
-   * - `relevance`: The relevance score of the commit responsible for the line.
-   * - `hash`: The hash of the commit responsible for the line.
-   * - `content`: The content of the line.
+   * @returns A promise that resolves to an array of CommitInfo objects with their relevance scores.
    *
-   * @remarks
-   * - If a commit's relevance is undefined or not a number, it defaults to 0.
-   * 
    * @throws Will throw an error if any Git command fails.
    */
-  async getLineRelevance(directory: string, metric: string) {
-
-      let commitRelevances: {[hash:string]: number} = {};
-      let allRelevances;
-      if (metric === metrics.recency) {
-        console.log("In recency metric");
+  private async getCommitRecency() {
         const now = new Date();
-        const command ='git log --pretty="%h "%s';
-        const output = await this.executeCommand(command);
+        const output = await this.executeCommand('git log --pretty="%h "%s');
         let commits = this.parseCommits(output);
         let maxTimePassed = 0;
         let minTimePassed = Number.MAX_VALUE;
         let commitsWithRelevancePromise = commits.map(async (commit) =>{
           
-          // use executeCommand to get date of commit
-
           let dateOut = await this.executeCommand(`git show -s --format=%ci ${commit.hash}`);
           console.log("Here is the dateOut", dateOut);
           dateOut = dateOut.replace(/ -\d{4}$/, "");
@@ -218,16 +198,40 @@ class GitNavigator{
 
         let commitsWithRelevance = await Promise.all(commitsWithRelevancePromise);
         commitsWithRelevance = commitsWithRelevance.map((commit) => {
-          // console.log("Here is the commit relevance", commit.relevance);
           commit.relevance = (maxTimePassed - commit.relevance) / (maxTimePassed - minTimePassed);
-          console.log("Here is the new commit relevance", commit.relevance);
           return commit;
         });
-    
-        allRelevances=  commitsWithRelevance;
+        return commitsWithRelevance;
+  }
+  /**
+   * Analyzes the relevance of each line in files within a specified directory
+   * based on the relevance of the commits responsible for those lines.
+   *
+   * @param directory - The directory to filter files by. Only files within this directory
+   * will be processed. To include all files, remove the directory filtering logic.
+   * @param metric - The metric used to determine relevance. Can be "recency" or "other", which uses findRelevancy.
+   * 
+   * @returns A promise that resolves to an object where each key is a file name and the value
+   * is an array of objects representing the relevance of each line in the file. Each object
+   * contains:
+   * - `relevance`: The relevance score of the commit responsible for the line.
+   * - `hash`: The hash of the commit responsible for the line.
+   * - `content`: The content of the line.
+   *
+   * @remarks
+   * - If a commit's relevance is undefined or not a number, it defaults to 0.
+   * 
+   * @throws Will throw an error if any Git command fails.
+   */
+  async getLineRelevance(directory: string, metric: string) {
+      
+      let commitRelevances: {[hash:string]: number} = {};
+      let allRelevances;
+      if (metric === metrics.recency) {
+        allRelevances = await this.getCommitRecency();
       }
       else {
-        allRelevances = await this.getRelevantCommits()
+        allRelevances = await this.getRelevantCommits();
       }
       
       for (const commit of allRelevances) {
