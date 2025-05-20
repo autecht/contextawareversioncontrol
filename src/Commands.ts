@@ -245,6 +245,7 @@ class LinesRelevanceVisualization extends Command {
       this.gitNavigator
         .getLineRelevance(adjustedDirectory, message.metric)
         .then((fileRelevances) => {
+          console.log("File Relevances: ", fileRelevances);
           if (this.panel === undefined) {
             console.error("Visualization panel is undefined");
             return;

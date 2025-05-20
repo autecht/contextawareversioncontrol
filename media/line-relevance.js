@@ -2,13 +2,10 @@ const vscode = acquireVsCodeApi();
 let currentMetric = "relevance";
 
 window.addEventListener('message', (event) => {
-  console.log("Event", event);
   const directory = event.data.directory;
   const adjustedDirectory = directory === ""?"root":directory;
   const fileRelevances = event.data.fileRelevances;
   const element = document.getElementById(adjustedDirectory);
-  console.log("Directory", directory);
-  console.log("element", element);
 
   // add file content to directory
   element.innerHTML += 

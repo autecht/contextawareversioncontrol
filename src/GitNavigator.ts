@@ -156,12 +156,16 @@ class GitNavigator{
         
         const blameOut = await this.executeCommand(`git blame ${filename}`);
         const lines = blameOut.split("\n");
+        // line example: ^9e819ea (github-classroom[bot] 2025-01-10 02:13:35 +0000 29)     config = util.load_config(configYamlPath + configFile)  
+        // wan to keep everything after 29) for line content
         const content = lines.map((line) => line.split(/\d+\)/)); 
         const hashesAndContent = content.map((line) => {
           const hash = line[0].split(" ")[0];
-          const formattedHash = hash.startsWith("^")?hash.slice(1):hash.slice(0, -1);
+          const abbreviatedHash = hash.startsWith("^")?hash.slice(1):hash.slice(0, -1); // retrieve abbreviated hash
+          // line[1] should be something like "     config = util.load_config(configYamlPath + configFile)  "
           const lineContent = line[1];
-          return { hash: formattedHash, lineContent: lineContent };
+          console.log("Line content:", lineContent);
+          return { hash: abbreviatedHash, lineContent: lineContent }; // seems to be preserving indentation
         });
         return hashesAndContent;
   }
