@@ -1,8 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
-import { CommitViewer } from "./CommitViewer";
-import { CommandExecutor } from "./CommandExecutor";
+import { GitNavigator } from "./GitNavigator";
+import {RelevantCommitVisualization, RelevantCommitsVisualization, LinesRelevanceVisualization} from "./Commands";
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -12,11 +13,13 @@ export function activate(context: vscode.ExtensionContext) {
     'Congratulations, your extension "contextawareversioncontrol" is now active!'
   );
 
-  const commitViewer = new CommitViewer(context);
+  const lineRelevanceVisualization = new LinesRelevanceVisualization(context, "line-relevance", "visualizeLines", "Visualize Lines");
+  const commitVisualization = new RelevantCommitVisualization(context, "commit-view", "showCommit", "Show Commit");
+  const commitsVisualization = new RelevantCommitsVisualization(context, "commit-view", "showCommits", "Show Commits");
   context.subscriptions.push(
-    commitViewer.showCommitsCommand, 
-    commitViewer.showCommitCommand,
-    commitViewer.visualizeLinesCommand
+    lineRelevanceVisualization.command, 
+    commitVisualization.command,
+    commitsVisualization.command
   );
 
   const hoverProvider = vscode.languages.registerHoverProvider({ scheme: 'file' }, {
@@ -24,10 +27,10 @@ export function activate(context: vscode.ExtensionContext) {
       const line = position.line;
       const fileName = document.fileName;
       
-      const commandExecutor = new CommandExecutor(context, commitViewer);
+      const gitNavigator = new GitNavigator(context);
       // const {stdout} = await exec(`git blame -L ${line + 1},${line + 1} ${fileName}`, (error, stdout, stderr) => {
       // });
-      const stdout = await commandExecutor.executeCommand(`git blame -L ${line + 1},${line + 1} "${fileName}"`);
+      const stdout = await gitNavigator.executeCommand(`git blame -L ${line + 1},${line + 1} "${fileName}"`);
       const hash = stdout.split(" ")[0];
       const markdown = new vscode.MarkdownString(
         `[🔍 View Commit](command:contextawareversioncontrol.showCommit?${encodeURIComponent(JSON.stringify([hash]))})`

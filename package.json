@@ -12,6 +12,7 @@
   "activationEvents": [
     "onCommand:extension.showCommit",
     "onCommand:extension.visualizeLines",
+    "onCommand: extension.showCommits",
     "onLanguage:plaintext",
     "onLanguage:javascript",
     "onLanguage:typescript",
@@ -33,7 +34,7 @@
         "category": ""
       },
       {
-        "command": "contextawareversioncontrol.showCommitDetails",
+        "command": "contextawareversioncontrol.showCommit",
         "title": "Show Commit Details",
         "category": ""
       },
