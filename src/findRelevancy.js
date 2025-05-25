@@ -1,4 +1,5 @@
 "use strict";
+
 const parse = require('git-diff-parser');
 const fs = require('fs');
 
@@ -8,10 +9,9 @@ const fs = require('fs');
  * @param {String} userFile current file user is editing
  * @param {Date} commitTime time when commit was made, use "git log -1 --format=%ci [commit hash]""
  * @param {String} authorName author of commit
- * @param {Int} startLine first line in user's current viewing window
- * @param {Int} endLine last line in user's current viewing window
+ * @param {Int} selectedLine line selected by the user at the time the function is executed
  * @param {Float[]} mults array representing all the current relevancy settings 
- * in the order of author, time, location. (and any future metrics)
+ * in the order of author, time, location, commit message similarity, changes similarity. (and any future metrics)
  * @param {string} stdout standard output stream
  *
  * @returns length 2 array:
@@ -21,8 +21,7 @@ const fs = require('fs');
  * all the lines changed
  */
 
-function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, endLine, mults, stdout) {
-    console.log("Finding relevancy...");
+function findRelevancy(userFile, commitTime, authorName, selectedLine, mults, stdout) {
     try{
     let authorMult = mults[0];
     let timeMult = mults[1];
@@ -43,8 +42,6 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
         return [0, []];
     }
     
-
-
     //console.log(parsed['commits'].length);
 
     const standard = parsed['commits'][0]['files'];
@@ -60,6 +57,7 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
 
     for (let curFile = 0; curFile < standard.length; ++curFile) {
         const fileName = standard[curFile]['name'];
+        console.log(fileName);
         const lines = standard[curFile]['lines'];
         const filteredLines = lines.filter(line => line.type !== 'normal');
 
@@ -84,16 +82,9 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
 
             //location calculation
             if (fileName === userFile) {
-                if (curLine >= startLine && curLine <= endLine) {
-                    location += 1;
-                    curLineEval[2] += 1;
-                } else if (curLine < startLine) {
-                    location += 1 - ((startLine - curLine) / startLine);
-                    curLineEval[2] += 1 - ((startLine - curLine) / startLine);
-                } else {
-                    location += 1 - ((curLine - endLine) / (totalFileLines));
-                    curLineEval[2] += 1 - ((curLine - endLine) / (totalFileLines));
-                }
+                let locDiff = Math.abs(1 - ((curLine - selectedLine) / (totalFileLines)));
+                location += locDiff;
+                curLineEval[2] += locDiff;
             }
 
             bestLines[lineContent] = Math.sqrt(curLineEval[0]**2 + curLineEval[1]**2 + curLineEval[2]**2) / Math.sqrt(3);

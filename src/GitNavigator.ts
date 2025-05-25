@@ -91,6 +91,11 @@ class GitNavigator{
      * @returns Promise with array of CommitInfo objects representing each commit.
      */
     async getRelevantCommits(hash?: string): Promise<CommitInfo[]> {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+          console.log("Editor issue");
+      }
+
       console.log("In getRelevantCommits");
       const command =
         hash === undefined
@@ -126,11 +131,22 @@ class GitNavigator{
           await fs.writeFile(blameFileName, blameOut);
         }
 
-        const relevantLines:[number, string[][]] = findRelevancy(vscode.Uri.joinPath(
-          this.context.extensionUri, "git-files", "test.diff").fsPath, 
-          "", new Date(), 
+        const gitTopLevel = (await this.executeCommand(`git rev-parse --show-toplevel`)).trim();
+        const commitTime = new Date(await this.executeCommand(`git log -1 --format=%ci ${commit.hash}`));
+        const commitMessage = await this.executeCommand(`git log --format=%B -n 1 ${commit.hash}`);
+
+        const position = editor?.selection.active;
+        const lineNumber = position?.line;
+        const curFileLoc = editor!.document.uri.fsPath;
+        const relFileLoc = curFileLoc.replaceAll("\\", "/").replace("d", "D").replace(gitTopLevel, "").replace("/", "").trim();
+        
+        const curFileName = editor?.document.uri.path.split("/").pop() ?? '';
+
+        const relevantLines:[number, string[][]] = findRelevancy(
+          relFileLoc, 
+          commitTime, 
           "autecht", 
-          20, 50, [0.5, 0.3, 0.8], 
+          lineNumber, [0.5, 0.3, 0.8, 0.2, 1], 
           diffOut) as [number, string[][]];
         return relevantLines;
       }); 
