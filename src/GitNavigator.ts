@@ -138,13 +138,14 @@ class GitNavigator{
         const position = editor?.selection.active;
         const lineNumber = position?.line;
         const curFileLoc = editor!.document.uri.fsPath;
-        const relFileLoc = curFileLoc.replaceAll("\\", "/").replace("d", "D").replace(gitTopLevel, "").replace("/", "").trim();
+        const relFileLoc = curFileLoc.replaceAll("\\", "/").replace("d", "D").replace("/", "").trim();
         
         const curFileName = editor?.document.uri.path.split("/").pop() ?? '';
 
         const relevantLines:[number, string[][]] = findRelevancy(
           relFileLoc, 
           commitTime, 
+          commitMessage, 
           "autecht", 
           lineNumber, [0.5, 0.3, 0.8, 0.2, 1], 
           diffOut) as [number, string[][]];
