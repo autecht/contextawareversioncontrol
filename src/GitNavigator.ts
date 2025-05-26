@@ -3,6 +3,7 @@ import { exec } from "child_process";
 import * as util from "util";
 import { findRelevancy } from "./findRelevancy.js";
 import { metrics } from "./Commands.js";
+import {File, Line} from "./File.js";
 
 /**
  * Use git commands to extract information from git repo.

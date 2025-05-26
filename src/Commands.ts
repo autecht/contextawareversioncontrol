@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 import * as path from 'path';
 import { GitNavigator } from "./GitNavigator";
 import { Viewer } from "./Viewer";
+import * as fs from 'fs';
+import {File, Line} from "./File";
 
 
 /**
@@ -244,7 +246,7 @@ class LinesRelevanceVisualization extends Command {
       const adjustedDirectory = message.directory;
       this.gitNavigator
         .getLineRelevance(adjustedDirectory, message.metric)
-        .then((fileRelevances) => {
+        .then((fileRelevances) =>   {
           console.log("File Relevances: ", fileRelevances);
           if (this.panel === undefined) {
             console.error("Visualization panel is undefined");
