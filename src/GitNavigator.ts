@@ -3,12 +3,59 @@ import { exec } from "child_process";
 import * as util from "util";
 import { findRelevancy } from "./findRelevancy.js";
 import { metrics } from "./Commands.js";
-import {File, Line} from "./File.js";
+import {File, Line, LineRelevance} from "./types.js";
 
 /**
  * Use git commands to extract information from git repo.
  */
 class GitNavigator{
+  createFiles(fileRelevances: { [fileName: string]: LineRelevance[]; }): Promise<File[]> {
+    const files: File[] = [];
+    for (const fileName in fileRelevances) {
+      files.push(this.createFile(fileName, fileRelevances[fileName]));
+    }
+    throw new Error("Method not implemented.");
+  }
+
+  
+  createFile(fileName: string, lineRelevances: LineRelevance[]): File {
+
+    let avgRelevance = 0;
+    const lines: Line[] = [];
+
+    let indentations: number[] = []
+
+    // loop through, find 0 indent, call line finder. Indexing into indentations may be somewhat difficult.
+    for (const lineRelevance of lineRelevances) {
+      const nextLine: Line = {
+        relevance: lineRelevance.relevance,
+        hash: lineRelevance.hash,
+        content: lineRelevance.content,
+        indent: this.getIndentation(lineRelevance.content),
+      };
+      avgRelevance += nextLine.relevance;
+      indentations.push(nextLine.indent);
+      lines.push(nextLine);
+    }
+    avgRelevance /= lineRelevances.length; // average relevance of all lines in file
+    indentations = [...new Set(indentations)]; // remove duplicates
+    indentations.sort((a, b) => b - a); // sort indentations from smallest to largest
+
+    const file: File = {
+      fileName: fileName,
+      relevance: avgRelevance,
+      lines: lines,
+      indentations: indentations,
+    };
+    return file;
+  }
+
+  getIndentation(lineContent: string): number {
+    const content = lineContent;
+    const indentation = content.search(/\S/); // Find first non-whitespace character
+    return indentation === -1 ? 0 : indentation;
+  }
+
 
   context: vscode.ExtensionContext;
   workspaceRoot: vscode.WorkspaceFolder | undefined;
@@ -228,7 +275,7 @@ class GitNavigator{
    * 
    * @throws Will throw an error if any Git command fails.
    */
-  async getLineRelevance(directory: string, metric: string) {
+  async getLineRelevance(directory: string, metric: string): Promise<{[fileName: string]: LineRelevance[]}> {
       
       let commitRelevances: {[hash:string]: number} = {};
       let allRelevances;
@@ -242,7 +289,7 @@ class GitNavigator{
       for (const commit of allRelevances) {
         commitRelevances[commit.hash] = commit.relevance === undefined || Number.isNaN(commit.relevance) ? 0 : commit.relevance;
       }
-      let fileRelevances: {[fileName: string]: any[]} = {};
+      let fileRelevances: {[fileName: string]: LineRelevance[]} = {};
       const fileNamesOut = await this.executeCommand("git ls-files");
       for (const filename of fileNamesOut.split("\n")) {
         let parts = filename.split("/");
@@ -366,3 +413,5 @@ interface CommitInfo {
   relevantLines?: string[][]; 
 }
 export { GitNavigator, CommitInfo};
+
+

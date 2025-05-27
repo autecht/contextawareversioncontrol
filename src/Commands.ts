@@ -3,7 +3,7 @@ import * as path from 'path';
 import { GitNavigator } from "./GitNavigator";
 import { Viewer } from "./Viewer";
 import * as fs from 'fs';
-import {File, Line} from "./File";
+import {File, Line} from "./types";
 
 
 /**
@@ -248,14 +248,20 @@ class LinesRelevanceVisualization extends Command {
         .getLineRelevance(adjustedDirectory, message.metric)
         .then((fileRelevances) =>   {
           console.log("File Relevances: ", fileRelevances);
-          if (this.panel === undefined) {
+          
+          this.gitNavigator.createFiles(fileRelevances).then((files: File[]) => {
+            if (this.panel === undefined) {
             console.error("Visualization panel is undefined");
             return;
           }
-          this.panel.webview.postMessage({
-            directory: message.directory,
-            fileRelevances: fileRelevances,
+            this.panel.webview.postMessage({
+              directory: message.directory,
+              fileRelevances: fileRelevances,
+              files: files
+            });
           });
+          
+          
         });
     }
     if (message.command === "openFile") {

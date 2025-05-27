@@ -5,6 +5,9 @@ window.addEventListener('message', (event) => {
   const directory = event.data.directory;
   const adjustedDirectory = directory === ""?"root":directory;
   const fileRelevances = event.data.fileRelevances;
+
+  const files = event.data.files;
+  console.log("Files: ", files);
   const element = document.getElementById(adjustedDirectory);
 
   // add file content to directory
