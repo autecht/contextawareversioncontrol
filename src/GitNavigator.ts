@@ -133,6 +133,8 @@ class GitNavigator{
 
         const gitTopLevel = (await this.executeCommand(`git rev-parse --show-toplevel`)).trim();
         const commitTime = new Date(await this.executeCommand(`git log -1 --format=%ci ${commit.hash}`));
+        const firstTime = new Date(await this.executeCommand(`git log --max-parents=0 --format=%ci`));
+        console.log(firstTime);
         const commitMessage = await this.executeCommand(`git log --format=%B -n 1 ${commit.hash}`);
 
         const position = editor?.selection.active;
@@ -140,11 +142,10 @@ class GitNavigator{
         const curFileLoc = editor!.document.uri.fsPath;
         const relFileLoc = curFileLoc.replaceAll("\\", "/").replace("d", "D").replace("/", "").trim();
         
-        const curFileName = editor?.document.uri.path.split("/").pop() ?? '';
-
         const relevantLines:[number, string[][]] = findRelevancy(
           relFileLoc, 
           commitTime, 
+          firstTime,
           commitMessage, 
           "autecht", 
           lineNumber, [0.5, 0.3, 0.8, 0.2, 1], 

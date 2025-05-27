@@ -21,7 +21,7 @@ const fs = require('fs');
  * all the lines changed
  */
 
-function findRelevancy(userFile, commitTime, commitMessage, authorName, selectedLine, mults, stdout) {
+function findRelevancy(userFile, commitTime, firstTime, commitMessage, authorName, selectedLine, mults, stdout) {
     try {
     let authorMult = mults[0];
     let timeMult = mults[1];
@@ -36,9 +36,8 @@ function findRelevancy(userFile, commitTime, commitMessage, authorName, selected
     }
 
     //Handle time since independent of actual changes
-    let latestTime = new Date('2025-04-13 15:40:18 -0700'); //TODO: Change this to have the actual latest time in the future
     let curTime = new Date();
-    let timePassedScaled = (1 - (curTime - commitTime) / (curTime - latestTime)) * timeMult;
+    let timePassedScaled = (1 - (curTime - commitTime) / (curTime - firstTime)) * timeMult;
 
     const userFileTokens = splitUserFile(userFile, selectedLine);
 
