@@ -39,10 +39,10 @@ window.addEventListener('message', (event) => {
     };    
 
     const zoomOut = () => {
-      if (zoomIndex === 0) { // already at max zoom, maybe could enlarge later
+      if (zoomIndex === 0) { // already at min zoom, maybe could shrink later
         return;
       }
-      zoomIndex--;
+      
       lines.forEach((line, idx) => {
         if (line.indent === indentations[zoomIndex]) {
           const lineElement = document.getElementById(`${fileName}-line-${idx}`);
@@ -51,6 +51,7 @@ window.addEventListener('message', (event) => {
           }
         }
       });
+      zoomIndex--;
     };   
 
     const fileContainer = document.createElement('div');
@@ -67,7 +68,7 @@ window.addEventListener('message', (event) => {
                   const hue = (1 - line.relevance) * 240;
                   const color = `hsla(${hue}, 100%, 50%, 0.5)`;
                   return `<div class="${hiddenClass} line-relevance" id = "${fileName}-line-${idx}" style="background-color:${color}">`
-                    + `${line.content}`
+                    + `${idx + 1} ${line.content}`
                   + `</div>`;
                 }).join("")} </div>`;
 
