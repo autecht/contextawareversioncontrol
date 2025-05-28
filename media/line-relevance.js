@@ -56,6 +56,9 @@ window.addEventListener('message', (event) => {
 
     const fileContainer = document.createElement('div');
     fileContainer.className = "file-container";
+    const hue = (1 - file.relevance) * 240;
+    const color = `hsla(${hue}, 100%, 50%, 0.5)`;
+    fileContainer.style.backgroundColor = color;
     
     fileContainer.innerHTML = `
       <h3 class = "small-heading" onclick="openFile('${fileName}')">${fileName}</h3> 
