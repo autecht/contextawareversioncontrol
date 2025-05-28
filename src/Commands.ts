@@ -1,10 +1,9 @@
 import * as vscode from "vscode";
-import * as path from 'path';
+import * as path from "path";
 import { GitNavigator } from "./GitNavigator";
 import { Viewer } from "./Viewer";
-import * as fs from 'fs';
-import {File, Line} from "./types";
-
+import * as fs from "fs";
+import { File, Line } from "./types";
 
 /**
  * Represents extension command with associated webview.
@@ -34,10 +33,10 @@ class Command {
       this.context.extensionUri,
       "media",
       this.mediaFileName + ".css"
-    ); 
+    );
     const stylesheetUri = panel.webview.asWebviewUri(stylesheetPath);
 
-    const  scriptPath = vscode.Uri.joinPath(
+    const scriptPath = vscode.Uri.joinPath(
       this.context.extensionUri,
       "media",
       this.mediaFileName + ".js"
@@ -69,12 +68,11 @@ class Command {
     return panel;
   }
 
-  
   /**
    * Handles incoming messages and executes corresponding commands.
    *
    * @param message - The message object containing the command and any associated data.
-   * 
+   *
    * Supported commands:
    * - `openDiffFile`: Opens the diff view for changed files using the `gitNavigator`.
    * - `checkoutCommit`: Checks out a specific commit by its hash and displays an information message.
@@ -127,24 +125,19 @@ class RelevantCommitsVisualization extends Command {
             return commit2.relevance - commit1.relevance;
           });
 
-          panel.webview.html = Viewer.getCommitsHTML(
-            uris[0],
-            uris[1],
-            commits
-          );
+          panel.webview.html = Viewer.getCommitsHTML(uris[0], uris[1], commits);
         });
       }
     );
   }
 }
 
-
 /**
  * Command to show information and relevance about a single commit and allow checkout and opening diff files.
  */
 class RelevantCommitVisualization extends Command {
   /**
-    * Command to be pushed to extension.
+   * Command to be pushed to extension.
    */
   command: vscode.Disposable;
   constructor(
@@ -186,11 +179,11 @@ class RelevantCommitVisualization extends Command {
 }
 
 /**
- * Command to visualize relevance of each line of any tracked files. 
+ * Command to visualize relevance of each line of any tracked files.
  */
 class LinesRelevanceVisualization extends Command {
   /**
-    * Command to be pushed to extension.
+   * Command to be pushed to extension.
    */
   command: vscode.Disposable;
   panel: vscode.WebviewPanel | undefined;
@@ -199,7 +192,6 @@ class LinesRelevanceVisualization extends Command {
     mediaFileName: string,
     identifier: string,
     title: string
-    
   ) {
     super(context, mediaFileName, identifier, title);
     this.handleMessage = this.handleMessage.bind(this);
@@ -226,11 +218,11 @@ class LinesRelevanceVisualization extends Command {
    * Handles incoming messages and processes commands accordingly.
    *
    * @param message - The message object containing the command and additional data.
-   * 
+   *
    * Commands:
    * - `"openDirectoryVisualization"`: Processes the directory visualization request.
    *   - Retrieves file relevance data for the specified directory and sends it to the webview.
-   * 
+   *
    * @remarks
    * - If the `directory` in the message is `"."`, it is treated as the root directory.
    */
@@ -246,22 +238,20 @@ class LinesRelevanceVisualization extends Command {
       const adjustedDirectory = message.directory;
       this.gitNavigator
         .getLineRelevance(adjustedDirectory, message.metric)
-        .then((fileRelevances) =>   {
+        .then((fileRelevances) => {
           console.log("File Relevances: ", fileRelevances);
-          
-          this.gitNavigator.createFiles(fileRelevances).then((files: File[]) => {
-            if (this.panel === undefined) {
+
+          const files = this.gitNavigator.createFiles(fileRelevances);
+
+          if (this.panel === undefined) {
             console.error("Visualization panel is undefined");
             return;
           }
-            this.panel.webview.postMessage({
-              directory: message.directory,
-              fileRelevances: fileRelevances,
-              files: files
-            });
+          this.panel.webview.postMessage({
+            directory: message.directory,
+            fileRelevances: fileRelevances,
+            files: files,
           });
-          
-          
         });
     }
     if (message.command === "openFile") {
@@ -274,29 +264,24 @@ class LinesRelevanceVisualization extends Command {
       const projectRoot = workspace[0].uri.fsPath;
       const absolutePath = path.join(projectRoot, relativePath);
       const fileUri = vscode.Uri.file(absolutePath);
-      try{
-        vscode.workspace.openTextDocument(fileUri).then(
-          (document) => {
-            vscode.window.showTextDocument(document, {preview: false});
-          }
-        );
-        
-      
-      }catch{
-      
-      }
+      try {
+        vscode.workspace.openTextDocument(fileUri).then((document) => {
+          vscode.window.showTextDocument(document, { preview: false });
+        });
+      } catch {}
     }
   }
 }
 
 enum metrics {
   relevance = "relevance",
-  recency = "recency",}
+  recency = "recency",
+}
 
 export {
   Command,
   LinesRelevanceVisualization,
   RelevantCommitVisualization,
   RelevantCommitsVisualization,
-  metrics
+  metrics,
 };

@@ -9,12 +9,12 @@ import {File, Line, LineRelevance} from "./types.js";
  * Use git commands to extract information from git repo.
  */
 class GitNavigator{
-  createFiles(fileRelevances: { [fileName: string]: LineRelevance[]; }): Promise<File[]> {
+  createFiles(fileRelevances: { [fileName: string]: LineRelevance[]; }): File[] {
     const files: File[] = [];
     for (const fileName in fileRelevances) {
       files.push(this.createFile(fileName, fileRelevances[fileName]));
     }
-    throw new Error("Method not implemented.");
+    return files;
   }
 
   
@@ -31,7 +31,7 @@ class GitNavigator{
         relevance: lineRelevance.relevance,
         hash: lineRelevance.hash,
         content: lineRelevance.content,
-        indent: this.getIndentation(lineRelevance.content),
+        indent: this.getIndentation(lineRelevance.content), // so lineRelevance.content is undefined
       };
       avgRelevance += nextLine.relevance;
       indentations.push(nextLine.indent);
@@ -39,7 +39,7 @@ class GitNavigator{
     }
     avgRelevance /= lineRelevances.length; // average relevance of all lines in file
     indentations = [...new Set(indentations)]; // remove duplicates
-    indentations.sort((a, b) => b - a); // sort indentations from smallest to largest
+    indentations.sort((a, b) => a - b); // sort indentations from smallest to largest
 
     const file: File = {
       fileName: fileName,
@@ -50,8 +50,12 @@ class GitNavigator{
     return file;
   }
 
-  getIndentation(lineContent: string): number {
+  getIndentation(lineContent: string): number { // lineContent is undefined
     const content = lineContent;
+    const trimmed = content.trim();
+    if (content.trim() === "") {
+      return 1000; // if line is empty, return large number so it is not shown
+    }
     const indentation = content.search(/\S/); // Find first non-whitespace character
     return indentation === -1 ? 0 : indentation;
   }
@@ -305,7 +309,11 @@ class GitNavigator{
         
         const relevanceOfResponsibleCommits = hashesAndContent.map((object) => {
             const relevance = commitRelevances[object.hash] === undefined?0: commitRelevances[object.hash];
-            return {relevance: relevance, hash: object.hash, content: object.lineContent};
+            const fileRelevance = {relevance: relevance, hash: object.hash, content: object.lineContent};
+            if (fileRelevance.content === undefined) {
+              fileRelevance.content = "";
+            }
+            return fileRelevance;
         });
      
   
