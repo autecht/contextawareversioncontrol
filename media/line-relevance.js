@@ -63,7 +63,7 @@ window.addEventListener('message', (event) => {
     fileContainer.innerHTML = `
       <h3 class = "small-heading" onclick="openFile('${fileName}')">${fileName}</h3> 
       <button class="zoom-in" onclick = "zoomIn()">+</button> <button class="zoom-out">-</button>
-              <div class="">
+              <div class="file-content-container">
                 ${lines.map((line, idx) => {
                   // console.log("Indentation for this line: ", line.indent, ". And indentations for zoom index: ", indentations[zoomIndex]);
                   const hiddenClass = line.indent > indentations[zoomIndex] ? "hidden" : "";
@@ -75,6 +75,10 @@ window.addEventListener('message', (event) => {
                   + `</div>`;
                 }).join("")} </div>`;
 
+    const dragContainer = document.createElement('div');
+    dragContainer.className = "drag-handle";
+    fileContainer.appendChild(dragContainer);
+
 
     relevanceContainer.appendChild(fileContainer);
     fileContainer.querySelector('.zoom-in').addEventListener('click', zoomIn);
@@ -83,31 +87,6 @@ window.addEventListener('message', (event) => {
   element.appendChild(relevanceContainer);
 
 
-  // element.innerHTML += 
-  //   `<div id="${adjustedDirectory}-relevance-container" class="relevance-container">` + 
-  //   files.map((file) => {
-  //     const fileName = file.fileName;
-  //     const relevance = file.relevance;
-  //     const lines = file.lines;
-  //     const indentations = file.indentations;
-  //     let zoomIndex = 0;
-
-  //           return `
-  //             <div class="file-container">
-  //             <h3 class = "small-heading" onclick="openFile('${fileName}')">${fileName}</h3> <button class="zoom-in" onclick = "zoomIn()">+</button> <button class="zoom-out" onclick = "zoomOut()">+</button>
-  //             <div class="">
-  //               ${lines.map((line, idx) => {
-  //                 // console.log("Indentation for this line: ", line.indent, ". And indentations for zoom index: ", indentations[zoomIndex]);
-  //                 const hiddenClass = line.indent > indentations[zoomIndex] ? "hidden" : "";
-  //                 // const hiddenClass = "hidden";
-  //                 const hue = (1 - line.relevance) * 240;
-  //                 const color = `hsla(${hue}, 100%, 50%, 0.5)`;
-  //                 return `<div class="${hiddenClass} line-relevance" style="background-color:${color}">`
-  //                   + `${line.content}`
-  //                 + `</div>`;
-  //               }).join("")}
-  //             </div> </div>`;}).join("") + '</div>';
-    
     // add dropup button
     document.getElementById(`${adjustedDirectory}-heading-container`).innerHTML +=
     `<button class="up-button" id="${adjustedDirectory}-up-button" onclick="removeFiles('${adjustedDirectory}')">↑</button>`;
