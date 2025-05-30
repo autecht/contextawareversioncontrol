@@ -14,6 +14,9 @@ class GitNavigator{
     for (const fileName in fileRelevances) {
       files.push(this.createFile(fileName, fileRelevances[fileName]));
     }
+
+    // sort files by relevance
+    files.sort((a, b) => b.relevance - a.relevance); // sort by relevance, descending
     return files;
   }
 
