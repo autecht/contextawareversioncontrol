@@ -7,6 +7,7 @@ const fs = require('fs');
  * Find relevancy between the current state of the commit and one other commit
  * @param {String} diffFile .diff for commit being checked for relevancy
  * @param {String} userFile current file user is editing
+ * @param {String} relFileLoc current file using relative path
  * @param {Date} commitTime time when commit was made, use "git log -1 --format=%ci [commit hash]""
  * @param {String} authorName author of commit
  * @param {Int} selectedLine line selected by the user at the time the function is executed
@@ -21,7 +22,7 @@ const fs = require('fs');
  * all the lines changed
  */
 
-function findRelevancy(userFile, commitTime, firstTime, commitMessage, authorName, selectedLine, mults, stdout) {
+function findRelevancy(userFile, relFileLoc, commitTime, firstTime, commitMessage, authorName, selectedLine, mults, stdout) {
     try {
     let authorMult = mults[0];
     let timeMult = mults[1];
@@ -85,7 +86,9 @@ function findRelevancy(userFile, commitTime, firstTime, commitMessage, authorNam
             }
 
             //location calculation
-            if (fileName === userFile) {
+            console.log("Location check:" + fileName + "  " + relFileLoc);
+            if (fileName === relFileLoc) {
+                console.log("Location good");
                 let locDiff = Math.abs(1 - ((curLine - selectedLine) / (totalFileLines)));
                 location += locDiff;
                 curLineEval[2] += locDiff;
