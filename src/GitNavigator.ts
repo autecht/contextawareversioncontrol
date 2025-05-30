@@ -15,7 +15,6 @@ class GitNavigator{
       files.push(this.createFile(fileName, fileRelevances[fileName]));
     }
 
-    // sort files by relevance
     files.sort((a, b) => b.relevance - a.relevance); // sort by relevance, descending
     return files;
   }
@@ -26,7 +25,7 @@ class GitNavigator{
     let avgRelevance = 0;
     const lines: Line[] = [];
 
-    let indentations: number[] = []
+    let indentations: number[] = [];
 
     // loop through, find 0 indent, call line finder. Indexing into indentations may be somewhat difficult.
     for (const lineRelevance of lineRelevances) {
