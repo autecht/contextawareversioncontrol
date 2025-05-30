@@ -131,7 +131,7 @@ class GitNavigator{
           await fs.writeFile(blameFileName, blameOut);
         }
 
-        const gitTopLevel = (await this.executeCommand(`git rev-parse --show-toplevel`)).trim();
+        const gitTopLevel = (await this.executeCommand(`git rev-parse --show-toplevel`)).trim().slice(3);
         const commitTime = new Date(await this.executeCommand(`git log -1 --format=%ci ${commit.hash}`));
         const firstTime = new Date(await this.executeCommand(`git log --max-parents=0 --format=%ci`));
         console.log(firstTime);
@@ -140,7 +140,7 @@ class GitNavigator{
         const position = editor?.selection.active;
         const lineNumber = position?.line;
         const globalFileLoc = editor!.document.uri.fsPath;
-        const relFileLoc = globalFileLoc.replaceAll("\\", "/").replace("d", "D").replace(gitTopLevel, "").replace("/", "").trim();
+        const relFileLoc = globalFileLoc.trim().replaceAll("\\", "/").slice(3).replace(gitTopLevel, "").replace("/", "");
         
         const relevantLines:[number, string[][]] = findRelevancy(
           globalFileLoc, 
