@@ -1,4 +1,5 @@
 "use strict";
+
 const parse = require('git-diff-parser');
 const fs = require('fs');
 
@@ -6,12 +7,12 @@ const fs = require('fs');
  * Find relevancy between the current state of the commit and one other commit
  * @param {String} diffFile .diff for commit being checked for relevancy
  * @param {String} userFile current file user is editing
+ * @param {String} relFileLoc current file using relative path
  * @param {Date} commitTime time when commit was made, use "git log -1 --format=%ci [commit hash]""
  * @param {String} authorName author of commit
- * @param {Int} startLine first line in user's current viewing window
- * @param {Int} endLine last line in user's current viewing window
+ * @param {Int} selectedLine line selected by the user at the time the function is executed
  * @param {Float[]} mults array representing all the current relevancy settings 
- * in the order of author, time, location. (and any future metrics)
+ * in the order of author, time, location, commit message similarity, changes similarity. (and any future metrics)
  * @param {string} stdout standard output stream
  *
  * @returns length 2 array:
@@ -21,38 +22,39 @@ const fs = require('fs');
  * all the lines changed
  */
 
-function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, endLine, mults, stdout) {
-    console.log("Finding relevancy...");
-    try{
+function findRelevancy(userFile, relFileLoc, commitTime, firstTime, commitMessage, authorName, selectedLine, mults, stdout) {
+    try {
     let authorMult = mults[0];
     let timeMult = mults[1];
     let locationMult = mults[2];
+    let msgMult = mults[3];
+    let similarityMult = mults[4];
 
-    //Handle time since independent of actual changes
-    let latestTime = new Date('2025-04-13 15:40:18 -0700'); //just using the very first commit made
-    let curTime = new Date();
-    let timePassedScaled = (1 - (curTime - commitTime) / (curTime - latestTime)) * timeMult;
-
-    let relevancy = [0, timePassedScaled, 0]; //[author, time, location]
-
-    //const diff = fs.readFileSync(stdout, 'utf8');
     let parsed = parse(stdout);
-
     if (parsed['commits'].length === 0) {
         console.error("No changes found in commit: ", error);
         return [0, []];
     }
-    
 
+    //Handle time since independent of actual changes
+    let curTime = new Date();
+    let timePassedScaled = (1 - (curTime - commitTime) / (curTime - firstTime)) * timeMult;
 
-    //console.log(parsed['commits'].length);
+    const userFileTokens = splitUserFile(userFile, selectedLine);
+
+    //commit message similarity
+    const msgSet = splitLine(commitMessage);
+    const msgSimilarity = similarity(msgSet, userFileTokens) * msgMult;
+
+    let relevancy = [0, timePassedScaled, 0, msgSimilarity, 0]; //[author, time, location, commit message similarity, general similarity]
 
     const standard = parsed['commits'][0]['files'];
 
     let author = 0;
     let location = 0;
     let numAuthorLines = 0;
-    let numLocationLines = 0;
+    let numLines = 0;
+    let generalSimilarity = 0;
 
     let bestLines = {};
     let fileNames = {};
@@ -67,14 +69,15 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
         
         let totalFileLines = lines.length;
         numAuthorLines += lines.filter(line => line.type === 'deleted').length;
-        numLocationLines += filteredLines.length;
+        numLines += filteredLines.length;
 
         for (let i = 0; i < filteredLines.length; ++i) {
             let curChange = filteredLines[i];
             let curLine = curChange['ln1'];
             let lineContent = curChange['text'];
             lineContent = curChange['type'] === 'deleted' ? '- ' + lineContent : '+ ' + lineContent;
-            let curLineEval = [0, timePassedScaled, 0]; //author, time, location
+
+            let curLineEval = [0, timePassedScaled, 0, msgSimilarity, 0]; //author, time, location, commitMsg, general similarity
             
             //author check
             if (curChange['type'] === 'deleted') {
@@ -83,31 +86,32 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
             }
 
             //location calculation
-            if (fileName === userFile) {
-                if (curLine >= startLine && curLine <= endLine) {
-                    location += 1;
-                    curLineEval[2] += 1;
-                } else if (curLine < startLine) {
-                    location += 1 - ((startLine - curLine) / startLine);
-                    curLineEval[2] += 1 - ((startLine - curLine) / startLine);
-                } else {
-                    location += 1 - ((curLine - endLine) / (totalFileLines));
-                    curLineEval[2] += 1 - ((curLine - endLine) / (totalFileLines));
-                }
+            console.log("Location check:" + fileName + "  " + relFileLoc);
+            if (fileName === relFileLoc) {
+                console.log("Location good");
+                let locDiff = Math.abs(1 - ((curLine - selectedLine) / (totalFileLines)));
+                location += locDiff;
+                curLineEval[2] += locDiff;
             }
 
-            bestLines[lineContent] = Math.sqrt(curLineEval[0]**2 + curLineEval[1]**2 + curLineEval[2]**2) / Math.sqrt(3);
+            //semantic calculation
+            const curLineSet = splitLine(lineContent);
+            
+            generalSimilarity += similarity(curLineSet, userFileTokens);
+            curLineEval[4] = similarity(curLineSet, userFileTokens);
+
+            bestLines[lineContent] = Math.sqrt(curLineEval[0]**2 + curLineEval[1]**2 + curLineEval[2]**2 + curLineEval[3]**2 + curLineEval[4]**2) / Math.sqrt(relevancy.length);
             fileNames[lineContent] = fileName;
         }
     }
     
     relevancy[0] = numAuthorLines === 0 ? 0 : author / numAuthorLines * authorMult;
-    relevancy[2] = numLocationLines === 0 ? 0 : location / numLocationLines * locationMult;
+    relevancy[2] = numLines === 0 ? 0 : location / numLines * locationMult;
+    relevancy[4] = numLines === 0 ? 0 : generalSimilarity / numLines * similarityMult;
 
     //standard L2 distance normalized between 1 (close -> very relevant) and 0 (far -> irrelevant)
-    const dist = Math.sqrt(relevancy[0]**2 + relevancy[1]**2 + relevancy[2]**2) / Math.sqrt(3);
+    const dist = Math.sqrt(relevancy[0]**2 + relevancy[1]**2 + relevancy[2]**2 + relevancy[3]**2 + relevancy[4]**2) / Math.sqrt(relevancy.length);
     console.log(relevancy);
-
 
     //sort dictionary
     var items = Object.keys(bestLines).map(function(lineContent) {
@@ -117,9 +121,10 @@ function findRelevancy(diffFile, userFile, commitTime, authorName, startLine, en
     items.sort(function(first, second) {
         return second[0] - first[0];
     });
+
     const result = [dist, items.slice(0, 10).map(item=>item[1])];
     return result;
-    }catch (err) {
+    } catch (err) {
         console.error("Unable to find relevant lines in findRelevancy(): ", err);
         return [0, []];
     }
@@ -147,5 +152,38 @@ function getBlameAuthors(filePath) {
     return authors;
 }
 
+function splitUserFile(userFile, selectedLine) {
+    const fileContent = fs.readFileSync(userFile, 'utf8');
+    const cleanedFile = fileContent.toLowerCase().replace(/[!(),{};$`:]/g, '');
+    const lines = cleanedFile.split('\n');
 
-module.exports = {findRelevancy, getBlameAuthors};
+    const lowerBound = selectedLine - 20 > 0 ? selectedLine - 20 : 0;
+    const upperBound = selectedLine + 20 < lines.length ? selectedLine + 20 : lines.length;
+
+    const selectedLines = lines.slice(lowerBound, upperBound);
+    const selectedText = selectedLines.join(' ');
+    const longWords = selectedText.split(/\s+/).filter(word => word.length > 4);
+
+    const uniqueTokens = new Set(longWords);
+
+    return uniqueTokens;
+}
+
+function splitLine(line) {
+    const cleanedLine = line.toLowerCase().replace(/[!(),{};$`:]/g, '');
+    const lineSplit = cleanedLine.split(/\s+/).filter(word => word.length > 4);
+    const lineSet = new Set(lineSplit);
+
+    return lineSet;
+}
+
+function similarity(setA, setB) {
+    if (setA.size === 0) {
+        return 0;
+    }
+
+    const intersectionCount = [...setA].filter(x => setB.has(x)).length;
+    return intersectionCount / setA.size;
+}
+
+module.exports = {findRelevancy, getBlameAuthors, splitUserFile, splitLine, similarity};
