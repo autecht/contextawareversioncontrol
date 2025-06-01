@@ -4,6 +4,11 @@ import * as vscode from "vscode";
 import { GitNavigator } from "./GitNavigator";
 import {RelevantCommitVisualization, RelevantCommitsVisualization, LinesRelevanceVisualization} from "./Commands";
 
+let lastKnownEditor:vscode.TextEditor | undefined = undefined;
+let lastKnownPosition:vscode.Position | undefined = undefined;
+let lastKnownFile: vscode.Uri | undefined = undefined;
+
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -47,8 +52,20 @@ export function activate(context: vscode.ExtensionContext) {
  
 
   context.subscriptions.push(hoverProvider);
+
+
+  // Track last known editor position
+  vscode.window.onDidChangeActiveTextEditor((editor) => {
+    if (editor) {
+      lastKnownEditor = editor;
+      lastKnownPosition = editor.selection.active;
+      lastKnownFile = editor.document.uri;
+    }
+  });
   
 }
 
 // This method is called when your extension is deactivated
 export function deactivate() {}
+
+export { lastKnownEditor, lastKnownPosition, lastKnownFile };

@@ -4,6 +4,7 @@ import * as util from "util";
 import { findRelevancy } from "./findRelevancy.js";
 import { metrics } from "./Commands.js";
 import {File, Line, LineRelevance} from "./types.js";
+import { lastKnownEditor, lastKnownFile, lastKnownPosition } from "./extension.js";
 
 /**
  * Use git commands to extract information from git repo.
@@ -197,11 +198,22 @@ class GitNavigator{
         let lineNumber: number = 0;
         let globalFileLoc: string = "";
         let relFileLoc: string = "";
-        if (editor !== undefined) {
+
+        if (editor) {
           position = editor.selection.active;
           lineNumber = position.line;
           globalFileLoc = editor.document.uri.fsPath;
           relFileLoc = globalFileLoc.trim().replaceAll("\\", "/").slice(3).replace(gitTopLevel, "").replace("/", "");
+        }
+        else if (lastKnownFile && lastKnownPosition) {
+          position = lastKnownPosition;
+          lineNumber = position.line;
+          globalFileLoc = lastKnownFile.fsPath;
+          relFileLoc = globalFileLoc.trim().replaceAll("\\", "/").slice(3).replace(gitTopLevel, "").replace("/", "");
+        }
+        else {
+          vscode.window.showErrorMessage("No active editor or last known file/position found. Cannot determine line number and file location.");
+          return []; // Return empty relevance if no editor or last known file/position
         }
         
         
