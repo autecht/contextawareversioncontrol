@@ -174,9 +174,9 @@ class GitNavigator{
           const absFilePath = vscode.Uri.joinPath(this.workspaceRoot!.uri, filePath).fsPath;
           try {
             await fs.access(absFilePath);
-            console.log(`${absFilePath} is good.`);
+            // console.log(`${absFilePath} is good.`);
           } catch {
-            console.log(`${absFilePath} does not exist.`);
+            // console.log(`${absFilePath} does not exist.`);
             continue;
           }
 
@@ -192,10 +192,18 @@ class GitNavigator{
         console.log(firstTime);
         const commitMessage = await this.executeCommand(`git log --format=%B -n 1 ${commit.hash}`);
 
-        const position = editor?.selection.active;
-        const lineNumber = position?.line;
-        const globalFileLoc = editor!.document.uri.fsPath;
-        const relFileLoc = globalFileLoc.trim().replaceAll("\\", "/").slice(3).replace(gitTopLevel, "").replace("/", "");
+
+        let position: vscode.Position;
+        let lineNumber: number = 0;
+        let globalFileLoc: string = "";
+        let relFileLoc: string = "";
+        if (editor !== undefined) {
+          position = editor.selection.active;
+          lineNumber = position.line;
+          globalFileLoc = editor.document.uri.fsPath;
+          relFileLoc = globalFileLoc.trim().replaceAll("\\", "/").slice(3).replace(gitTopLevel, "").replace("/", "");
+        }
+        
         
         const relevantLines:[number, string[][]] = findRelevancy(
           globalFileLoc, 

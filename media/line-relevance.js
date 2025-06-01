@@ -4,7 +4,6 @@ let currentMetric = "relevance";
 window.addEventListener('message', (event) => {
   const directory = event.data.directory;
   const adjustedDirectory = directory === ""?"root":directory;
-  const fileRelevances = event.data.fileRelevances;
 
   const files = event.data.files;
   console.log("Files: ", files);
@@ -13,12 +12,20 @@ window.addEventListener('message', (event) => {
   const relevanceContainer = document.createElement('div');
   relevanceContainer.id = `${adjustedDirectory}-relevance-container`;
   relevanceContainer.className = "relevance-container";
+  
 
+  element.appendChild(relevanceContainer);
 
+  renderFiles(files, relevanceContainer);
+  // add dropup button
+  document.getElementById(`${adjustedDirectory}-heading-container`).innerHTML +=
+  `<button class="up-button" id="${adjustedDirectory}-up-button" onclick="removeFiles('${adjustedDirectory}')">↑</button>`;
+});
+
+function renderFiles(files, relevanceContainer) {
   // add file content to directory
-  files.forEach((file) => {
+  files.forEach((file, fileIndex) => {
     const fileName = file.fileName;
-    const relevance = file.relevance;
     const lines = file.lines;
     const indentations = file.indentations;
     let zoomIndex = 0;
@@ -55,10 +62,29 @@ window.addEventListener('message', (event) => {
     };   
 
     const fileContainer = document.createElement('div');
+    fileContainer.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData("fromIndex", fileIndex);
+    });
+    fileContainer.addEventListener("drop", (e) => {
+      const fromIndex = e.dataTransfer.getData("fromIndex");
+      const toIndex = fileIndex;
+      const smallerIndex = Math.min(fromIndex, toIndex);
+      const largerIndex = Math.max(fromIndex, toIndex);
+      
+      const newFiles = files.slice(0, smallerIndex).
+        concat([files[largerIndex]]).
+        concat(files.slice(smallerIndex + 1, largerIndex)).
+        concat([files[smallerIndex]]).
+        concat(files.slice(largerIndex + 1));
+
+      relevanceContainer.innerHTML = "";
+      renderFiles(newFiles, relevanceContainer);
+    });
     fileContainer.className = "file-container";
     const hue = (1 - file.relevance) * 240;
     const color = `hsla(${hue}, 100%, 50%, 0.5)`;
     fileContainer.style.backgroundColor = color;
+    fileContainer.setAttribute("draggable", "true");
     
     fileContainer.innerHTML = `
       <h3 class = "small-heading" onclick="openFile('${fileName}')">${fileName}</h3> 
@@ -91,13 +117,7 @@ window.addEventListener('message', (event) => {
     addDragEvents(dragContainer, fileContentContainer, zoomIn, zoomOut);
 
   });
-  element.appendChild(relevanceContainer);
-
-
-    // add dropup button
-    document.getElementById(`${adjustedDirectory}-heading-container`).innerHTML +=
-    `<button class="up-button" id="${adjustedDirectory}-up-button" onclick="removeFiles('${adjustedDirectory}')">↑</button>`;
-});
+}
 
 function addDragEvents(dragContainer, fileContentContainer, onZoomIn, onZoomOut) {
   let isDragging = false;
