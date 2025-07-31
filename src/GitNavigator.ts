@@ -2,8 +2,7 @@ import * as vscode from "vscode";
 import { exec } from "child_process";
 import * as util from "util";
 import { findRelevancy } from "./findRelevancy.js";
-import { metrics } from "./Commands.js";
-import { File, Line, LineRelevance } from "./types.js";
+import { File, Line, LineRelevance, metrics } from "./types.js";
 import { Client } from "pg";
 
 /**

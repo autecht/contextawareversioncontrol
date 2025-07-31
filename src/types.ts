@@ -18,5 +18,8 @@ type LineRelevance = {
   content: string;
 }
 
+enum metrics {
+  recency = "recency",
+  relevance = "relevance",}
 
-export { File, Line, LineRelevance };
+export { File, Line, LineRelevance, metrics };

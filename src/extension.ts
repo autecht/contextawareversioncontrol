@@ -2,24 +2,11 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import { GitNavigator } from "./GitNavigator";
-import {RelevantCommitVisualization, RelevantCommitsVisualization, LinesRelevanceVisualization} from "./Commands";
 import {Client} from 'pg';
+import LineRelevanceView from "./WebViews/LineRelevanceView";
+import RelevantCommitsView from "./WebViews/RelevantCommitsView";
 
 
-function testDriver() {
-  const client = new Client({
-    user:'postgres',
-    host: 'localhost',
-    database: 'bank_test',
-    port: 5432,
-  });
-  client.connect().then(() => {
-    client.query('SELECT NOW()', (err, res) => {
-      console.log(res.rows[0]);
-      client.end();
-    });
-  });
-}
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -31,9 +18,9 @@ export function activate(context: vscode.ExtensionContext) {
 
   // testDriver();
 
-  const lineRelevanceVisualization = new LinesRelevanceVisualization(context, "line-relevance", "visualizeLines", "Visualize Lines");
-  const commitVisualization = new RelevantCommitVisualization(context, "commit-view", "showCommit", "Show Commit");
-  const commitsVisualization = new RelevantCommitsVisualization(context, "commit-view", "showCommits", "Show Commits");
+  const lineRelevanceVisualization = new LineRelevanceView(context, "line-relevance", "visualizeLines", "Visualize Lines");
+  const commitVisualization = new RelevantCommitsView(context, "commit-view", "showCommit", "Show Commit");
+  const commitsVisualization = new RelevantCommitsView(context, "commit-view", "showCommits", "Show Commits");
   context.subscriptions.push(
     lineRelevanceVisualization.command, 
     commitVisualization.command,
@@ -46,8 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
       const fileName = document.fileName;
       
       const gitNavigator = new GitNavigator(context);
-      // const {stdout} = await exec(`git blame -L ${line + 1},${line + 1} ${fileName}`, (error, stdout, stderr) => {
-      // });
+      
       const stdout = await gitNavigator.executeCommand(`git blame -L ${line + 1},${line + 1} "${fileName}"`);
       const hash = stdout.split(" ")[0];
       const markdown = new vscode.MarkdownString(
