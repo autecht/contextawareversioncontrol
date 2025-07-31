@@ -3,13 +3,14 @@ import { exec } from "child_process";
 import * as util from "util";
 import { findRelevancy } from "./findRelevancy.js";
 import { metrics } from "./Commands.js";
-import {File, Line, LineRelevance} from "./types.js";
+import { File, Line, LineRelevance } from "./types.js";
+import { Client } from "pg";
 
 /**
  * Use git commands to extract information from git repo.
  */
-class GitNavigator{
-  createFiles(fileRelevances: { [fileName: string]: LineRelevance[]; }): File[] {
+class GitNavigator {
+  createFiles(fileRelevances: { [fileName: string]: LineRelevance[] }): File[] {
     const files: File[] = [];
     for (const fileName in fileRelevances) {
       files.push(this.createFile(fileName, fileRelevances[fileName]));
@@ -19,9 +20,7 @@ class GitNavigator{
     return files;
   }
 
-  
   createFile(fileName: string, lineRelevances: LineRelevance[]): File {
-
     let avgRelevance = 0;
     const lines: Line[] = [];
 
@@ -52,7 +51,8 @@ class GitNavigator{
     return file;
   }
 
-  getIndentation(lineContent: string): number { // lineContent is undefined
+  getIndentation(lineContent: string): number {
+    // lineContent is undefined
     const content = lineContent;
     const trimmed = content.trim();
     if (content.trim() === "") {
@@ -61,7 +61,6 @@ class GitNavigator{
     const indentation = content.search(/\S/); // Find first non-whitespace character
     return indentation === -1 ? 0 : indentation;
   }
-
 
   context: vscode.ExtensionContext;
   workspaceRoot: vscode.WorkspaceFolder | undefined;
@@ -77,7 +76,10 @@ class GitNavigator{
   /**
    * Execute command in workspace directory.
    */
-  static async executeCommand(context: vscode.ExtensionContext, command: string):Promise<string> {
+  static async executeCommand(
+    context: vscode.ExtensionContext,
+    command: string
+  ): Promise<string> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
       return "";
@@ -96,16 +98,15 @@ class GitNavigator{
       );
       return "";
     }
-
   }
 
   /**
    * Execute command in workspace directory
-   * 
+   *
    * @param command command to be executed
    * @returns Promise with string which is stdout from command
    */
-  async executeCommand(command: string):Promise<string> {
+  async executeCommand(command: string): Promise<string> {
     const stdout = await GitNavigator.executeCommand(this.context, command);
     return stdout;
   }
@@ -140,117 +141,216 @@ class GitNavigator{
   }
 
   /**
-     * Retrieves commits from repo and evaluates their relevance.
-     *
-     * @param hash: hash of specific commit to retrieve. If undefined, retrieves all commits except initial commit.
-     * @returns Promise with array of CommitInfo objects representing each commit.
-     */
-    async getRelevantCommits(hash?: string): Promise<CommitInfo[]> {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) {
-          console.log("Editor issue");
-      }
-
-      console.log("In getRelevantCommits");
-      const command =
-        hash === undefined
-          ? 'git log --pretty="%h "%s'
-          : `git log -n 1 --pretty="%h "%s ${hash}`;
-      
-  
-      const output = await this.executeCommand(command);
-      let commits = this.parseCommits(output);
-  
-      const commitsRelevance = commits.map(async (commit) =>{
-        const diffOut = await this.executeCommand(`git diff --no-color --unified=0 ${commit.hash}`);
-  
-        //get just the files changed between the current and the commit
-        const filesChanged = await this.executeCommand(`git diff --name-only ${commit.hash}`);
-        const filesChangedArr = filesChanged.split('\n');
-  
-        for (const filePath of filesChangedArr.slice(0, filesChangedArr.length - 1)) {
-          const fs = require('fs').promises;
-
-          const absFilePath = vscode.Uri.joinPath(this.workspaceRoot!.uri, filePath).fsPath;
-          try {
-            await fs.access(absFilePath);
-            // console.log(`${absFilePath} is good.`);
-          } catch {
-            // console.log(`${absFilePath} does not exist.`);
-            continue;
-          }
-
-          const blameOut = await this.executeCommand(`git blame ${filePath}`);
-          const blameFileName = filePath.split('/').pop() + '_blame.txt';
-
-          await fs.writeFile(blameFileName, blameOut);
-        }
-
-        const gitTopLevel = (await this.executeCommand(`git rev-parse --show-toplevel`)).trim().slice(3);
-        const commitTime = new Date(await this.executeCommand(`git log -1 --format=%ci ${commit.hash}`));
-        const firstTime = new Date(await this.executeCommand(`git log --max-parents=0 --format=%ci`));
-        console.log(firstTime);
-        const commitMessage = await this.executeCommand(`git log --format=%B -n 1 ${commit.hash}`);
-
-
-        let position: vscode.Position;
-        let lineNumber: number = 0;
-        let globalFileLoc: string = "";
-        let relFileLoc: string = "";
-        if (editor !== undefined) {
-          position = editor.selection.active;
-          lineNumber = position.line;
-          globalFileLoc = editor.document.uri.fsPath;
-          relFileLoc = globalFileLoc.trim().replaceAll("\\", "/").slice(3).replace(gitTopLevel, "").replace("/", "");
-        }
-        
-        
-        const relevantLines:[number, string[][]] = findRelevancy(
-          globalFileLoc, 
-          relFileLoc,
-          commitTime, 
-          firstTime,
-          commitMessage, 
-          "autecht", 
-          lineNumber, [0.5, 0.3, 0.8, 0.2, 1], 
-          diffOut) as [number, string[][]];
-        return relevantLines;
-      }); 
-
-      const linesAndRelevance = await Promise.all(commitsRelevance);
-
-      const justRelevance = linesAndRelevance.map(item => item[0]);
-      const maxRelevance = Math.max(...justRelevance);
-
-      commits = commits.map((commit, idx) => {
-        return {...commit, relevantLines: linesAndRelevance[idx][1], relevance: linesAndRelevance[idx][0] / maxRelevance};
-      });
-
-      console.log(commits);
-
-      return commits;
+   * Retrieves commits from repo and evaluates their relevance.
+   *
+   * @param hash: hash of specific commit to retrieve. If undefined, retrieves all commits except initial commit.
+   * @returns Promise with array of CommitInfo objects representing each commit.
+   */
+  async getRelevantCommits(hash?: string): Promise<CommitInfo[]> {
+    // get comments here for now
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      console.log("Editor issue");
     }
 
-  
+    console.log("In getRelevantCommits");
+    const command =
+      hash === undefined
+        ? 'git log --pretty="%h "%s'
+        : `git log -n 1 --pretty="%h "%s ${hash}`;
 
-  private async getResponsibleCommitsAndContent(filename: string) {
-        
-        const blameOut = await this.executeCommand(`git blame ${filename}`);
-        const lines = blameOut.split("\n");
-        // line example: ^9e819ea (github-classroom[bot] 2025-01-10 02:13:35 +0000 29)     config = util.load_config(configYamlPath + configFile)  
-        // wan to keep everything after 29) for line content
-        const content = lines.map((line) => line.split(/\d+\)/)); 
-        const hashesAndContent = content.map((line) => {
-          const hash = line[0].split(" ")[0];
-          const abbreviatedHash = hash.startsWith("^")?hash.slice(1):hash.slice(0, -1); // retrieve abbreviated hash
-          // line[1] should be something like "     config = util.load_config(configYamlPath + configFile)  "
-          const lineContent = line[1];
-          console.log("Line content:", lineContent);
-          return { hash: abbreviatedHash, lineContent: lineContent }; // seems to be preserving indentation
-        });
-        return hashesAndContent;
+    const output = await this.executeCommand(command);
+    let commits = this.parseCommits(output);
+
+    const commitsRelevance = commits.map(async (commit) => {
+      const diffOut = await this.executeCommand(
+        `git diff --no-color --unified=0 ${commit.hash}`
+      );
+
+      //get just the files changed between the current and the commit
+      const filesChanged = await this.executeCommand(
+        `git diff --name-only ${commit.hash}`
+      );
+      const filesChangedArr = filesChanged.split("\n");
+
+      for (const filePath of filesChangedArr.slice(
+        0,
+        filesChangedArr.length - 1
+      )) {
+        const fs = require("fs").promises;
+
+        const absFilePath = vscode.Uri.joinPath(
+          this.workspaceRoot!.uri,
+          filePath
+        ).fsPath;
+        try {
+          await fs.access(absFilePath);
+          // console.log(`${absFilePath} is good.`);
+        } catch {
+          // console.log(`${absFilePath} does not exist.`);
+          continue;
+        }
+
+        const blameOut = await this.executeCommand(`git blame ${filePath}`);
+        const blameFileName = filePath.split("/").pop() + "_blame.txt";
+
+        await fs.writeFile(blameFileName, blameOut);
+      }
+
+      const gitTopLevel = (
+        await this.executeCommand(`git rev-parse --show-toplevel`)
+      )
+        .trim()
+        .slice(3);
+      const commitTime = new Date(
+        await this.executeCommand(`git log -1 --format=%ci ${commit.hash}`)
+      );
+      const firstTime = new Date(
+        await this.executeCommand(`git log --max-parents=0 --format=%ci`)
+      );
+      console.log(firstTime);
+      const commitMessage = await this.executeCommand(
+        `git log --format=%B -n 1 ${commit.hash}`
+      );
+
+      let position: vscode.Position;
+      let lineNumber: number = 0;
+      let globalFileLoc: string = "";
+      let relFileLoc: string = "";
+      if (editor !== undefined) {
+        position = editor.selection.active;
+        lineNumber = position.line;
+        globalFileLoc = editor.document.uri.fsPath;
+        relFileLoc = globalFileLoc
+          .trim()
+          .replaceAll("\\", "/")
+          .slice(3)
+          .replace(gitTopLevel, "")
+          .replace("/", "");
+      }
+
+      const relevantLines: [number, string[][]] = findRelevancy(
+        globalFileLoc,
+        relFileLoc,
+        commitTime,
+        firstTime,
+        commitMessage,
+        "autecht",
+        lineNumber,
+        [0.5, 0.3, 0.8, 0.2, 1],
+        diffOut
+      ) as [number, string[][]];
+      return relevantLines;
+    });
+
+    const linesAndRelevance = await Promise.all(commitsRelevance);
+
+    const justRelevance = linesAndRelevance.map((item) => item[0]);
+    const maxRelevance = Math.max(...justRelevance);
+
+    commits =  await Promise.all(commits.map(async (commit, idx) => {
+      return {
+        ...commit,
+        relevantLines: linesAndRelevance[idx][1],
+        relevance: linesAndRelevance[idx][0] / maxRelevance,
+        comments: await this.getCommentsFromCommit(commit.hash),
+      };
+    }));
+
+    console.log("Commit:", commits);
+
+    return commits;
   }
 
+  private async getCommentsFromCommit(commitHash: string): Promise<Comment[]> {
+    // Need hash and repository
+    const repoUrl = await this.executeCommand("git remote get-url origin");
+    const client = new Client({
+      user: "postgres",
+      host: "localhost",
+      database: "context_aware_version_control",
+      port: 5432,
+    });
+    await client.connect();
+    const query = `
+      SELECT username, comment, timestamp, id
+      FROM comments
+      WHERE commit_id = $1 AND repo_url = $2
+      ORDER BY timestamp ASC
+    `;
+    const parameters = [commitHash, repoUrl];
+    const result = await client.query(query, parameters);
+    await client.end();
+    if (result.rows.length > 0) {
+      return result.rows.map((row) => ({
+        username: row.username,
+        comment: row.comment,
+        timestamp: row.timestamp.toISOString(), // Convert to ISO string for consistency
+        id: row.id,
+      }));
+    }
+    return [];
+  }
+
+
+
+  public async deleteComment(hash: string, id: string):Promise<Comment[]> {
+    const client = new Client({
+      user: "postgres",
+      host: "localhost",
+      database: "context_aware_version_control",
+      port: 5432,
+    });
+    await client.connect();
+    const deleteQuery = `
+      DELETE FROM comments
+      WHERE id=$1
+    `;
+    const parameters = [id];
+    await client.query(deleteQuery, parameters);
+    // send message to webview
+    await client.end();
+    return await this.getCommentsFromCommit(hash);
+  }
+
+  public async addCommentToCommit(hash: string, comment: string):Promise<Comment[]> {
+    const repoUrl = await this.executeCommand("git remote get-url origin");
+    const username = (await this.executeCommand("git config user.name")).trim();
+    const client = new Client({
+      user: "postgres",
+      host: "localhost",
+      database: "context_aware_version_control",
+      port: 5432,
+    });
+    await client.connect();
+    const insert = `
+      INSERT INTO comments (username, comment, repo_url, commit_id)
+      VALUES ($1, $2, $3, $4)
+    `;
+    const parameters = [username, comment, repoUrl, hash];
+    await client.query(insert, parameters);
+    client.end();
+    return await this.getCommentsFromCommit(hash);
+  }
+
+  private async getResponsibleCommitsAndContent(filename: string) {
+    const blameOut = await this.executeCommand(`git blame ${filename}`);
+    const lines = blameOut.split("\n");
+    // line example: ^9e819ea (github-classroom[bot] 2025-01-10 02:13:35 +0000 29)     config = util.load_config(configYamlPath + configFile)
+    // wan to keep everything after 29) for line content
+    const content = lines.map((line) => line.split(/\d+\)/));
+    const hashesAndContent = content.map((line) => {
+      const hash = line[0].split(" ")[0];
+      const abbreviatedHash = hash.startsWith("^")
+        ? hash.slice(1)
+        : hash.slice(0, -1); // retrieve abbreviated hash
+      // line[1] should be something like "     config = util.load_config(configYamlPath + configFile)  "
+      const lineContent = line[1];
+      console.log("Line content:", lineContent);
+      return { hash: abbreviatedHash, lineContent: lineContent }; // seems to be preserving indentation
+    });
+    return hashesAndContent;
+  }
 
   /**
    * Retrieves the recency of commits in the repo as a number between 0 and 1.
@@ -260,33 +360,35 @@ class GitNavigator{
    * @throws Will throw an error if any Git command fails.
    */
   private async getCommitRecency() {
-        const now = new Date();
-        const output = await this.executeCommand('git log --pretty="%h "%s');
-        let commits = this.parseCommits(output);
-        let maxTimePassed = 0;
-        let minTimePassed = Number.MAX_VALUE;
-        let commitsWithRelevancePromise = commits.map(async (commit) =>{
-          
-          let dateOut = await this.executeCommand(`git show -s --format=%ci ${commit.hash}`);
-          console.log("Here is the dateOut", dateOut);
-          dateOut = dateOut.replace(/ -\d{4}$/, "");
-          const commitDate  = new Date(dateOut);
-          const timePassed = now.getTime() - commitDate.getTime();
-          if (timePassed > maxTimePassed){
-            maxTimePassed = timePassed;
-          }
-          if (timePassed < minTimePassed){
-            minTimePassed = timePassed;
-          }
-          return {...commit, relevance: timePassed};
-        }); 
+    const now = new Date();
+    const output = await this.executeCommand('git log --pretty="%h "%s');
+    let commits = this.parseCommits(output);
+    let maxTimePassed = 0;
+    let minTimePassed = Number.MAX_VALUE;
+    let commitsWithRelevancePromise = commits.map(async (commit) => {
+      let dateOut = await this.executeCommand(
+        `git show -s --format=%ci ${commit.hash}`
+      );
+      console.log("Here is the dateOut", dateOut);
+      dateOut = dateOut.replace(/ -\d{4}$/, "");
+      const commitDate = new Date(dateOut);
+      const timePassed = now.getTime() - commitDate.getTime();
+      if (timePassed > maxTimePassed) {
+        maxTimePassed = timePassed;
+      }
+      if (timePassed < minTimePassed) {
+        minTimePassed = timePassed;
+      }
+      return { ...commit, relevance: timePassed };
+    });
 
-        let commitsWithRelevance = await Promise.all(commitsWithRelevancePromise);
-        commitsWithRelevance = commitsWithRelevance.map((commit) => {
-          commit.relevance = (maxTimePassed - commit.relevance) / (maxTimePassed - minTimePassed);
-          return commit;
-        });
-        return commitsWithRelevance;
+    let commitsWithRelevance = await Promise.all(commitsWithRelevancePromise);
+    commitsWithRelevance = commitsWithRelevance.map((commit) => {
+      commit.relevance =
+        (maxTimePassed - commit.relevance) / (maxTimePassed - minTimePassed);
+      return commit;
+    });
+    return commitsWithRelevance;
   }
   /**
    * Analyzes the relevance of each line in files within a specified directory
@@ -295,7 +397,7 @@ class GitNavigator{
    * @param directory - The directory to filter files by. Only files within this directory
    * will be processed. To include all files, remove the directory filtering logic.
    * @param metric - The metric used to determine relevance. Can be "recency" or "other", which uses findRelevancy.
-   * 
+   *
    * @returns A promise that resolves to an object where each key is a file name and the value
    * is an array of objects representing the relevance of each line in the file. Each object
    * contains:
@@ -305,51 +407,63 @@ class GitNavigator{
    *
    * @remarks
    * - If a commit's relevance is undefined or not a number, it defaults to 0.
-   * 
+   *
    * @throws Will throw an error if any Git command fails.
    */
-  async getLineRelevance(directory: string, metric: string): Promise<{[fileName: string]: LineRelevance[]}> {
-      
-      let commitRelevances: {[hash:string]: number} = {};
-      let allRelevances;
-      if (metric === metrics.recency) {
-        allRelevances = await this.getCommitRecency();
-      }
-      else {
-        allRelevances = await this.getRelevantCommits();
-      }
-      
-      for (const commit of allRelevances) {
-        commitRelevances[commit.hash] = commit.relevance === undefined || Number.isNaN(commit.relevance) ? 0 : commit.relevance;
-      }
-      let fileRelevances: {[fileName: string]: LineRelevance[]} = {};
-      const fileNamesOut = await this.executeCommand("git ls-files");
-      for (const filename of fileNamesOut.split("\n")) {
-        let parts = filename.split("/");
-        parts.pop();
-        const directoryName = parts.join("/");
-        if (directoryName !== directory){
-          continue; // TODO: remove this line to get all files
-        }
-        if (filename.trim() === "") {
-          continue;
-        }
-        const hashesAndContent = await this.getResponsibleCommitsAndContent(filename);
-        
-        const relevanceOfResponsibleCommits = hashesAndContent.map((object) => {
-            const relevance = commitRelevances[object.hash] === undefined?0: commitRelevances[object.hash];
-            const fileRelevance = {relevance: relevance, hash: object.hash, content: object.lineContent};
-            if (fileRelevance.content === undefined) {
-              fileRelevance.content = "";
-            }
-            return fileRelevance;
-        });
-     
-  
-        fileRelevances[filename] = relevanceOfResponsibleCommits;
-      }
-      return fileRelevances;
+  async getLineRelevance(
+    directory: string,
+    metric: string
+  ): Promise<{ [fileName: string]: LineRelevance[] }> {
+    let commitRelevances: { [hash: string]: number } = {};
+    let allRelevances;
+    if (metric === metrics.recency) {
+      allRelevances = await this.getCommitRecency();
+    } else {
+      allRelevances = await this.getRelevantCommits();
     }
+
+    for (const commit of allRelevances) {
+      commitRelevances[commit.hash] =
+        commit.relevance === undefined || Number.isNaN(commit.relevance)
+          ? 0
+          : commit.relevance;
+    }
+    let fileRelevances: { [fileName: string]: LineRelevance[] } = {};
+    const fileNamesOut = await this.executeCommand("git ls-files");
+    for (const filename of fileNamesOut.split("\n")) {
+      let parts = filename.split("/");
+      parts.pop();
+      const directoryName = parts.join("/");
+      if (directoryName !== directory) {
+        continue; // TODO: remove this line to get all files
+      }
+      if (filename.trim() === "") {
+        continue;
+      }
+      const hashesAndContent = await this.getResponsibleCommitsAndContent(
+        filename
+      );
+
+      const relevanceOfResponsibleCommits = hashesAndContent.map((object) => {
+        const relevance =
+          commitRelevances[object.hash] === undefined
+            ? 0
+            : commitRelevances[object.hash];
+        const fileRelevance = {
+          relevance: relevance,
+          hash: object.hash,
+          content: object.lineContent,
+        };
+        if (fileRelevance.content === undefined) {
+          fileRelevance.content = "";
+        }
+        return fileRelevance;
+      });
+
+      fileRelevances[filename] = relevanceOfResponsibleCommits;
+    }
+    return fileRelevances;
+  }
 
   /**
    * Parses the output of the git log command to extract commit information.
@@ -365,7 +479,6 @@ class GitNavigator{
     });
     return commits;
   }
-  
 
   /**
    * get files changed from a commit.
@@ -379,9 +492,7 @@ class GitNavigator{
       .filter((file) => file.trim() !== "");
     return filesChanged;
   }
-  
 
-  
   /**
    * Opens the vscode diff views for files changed in a specific commit.
    *
@@ -422,23 +533,22 @@ class GitNavigator{
       );
     }
   }
-  
 }
 
 /**
  * Represents information about a Git commit.
- * 
+ *
  * @interface CommitInfo
- * 
+ *
  * @property {string} hash
  * The unique hash identifier of the commit.
- * 
+ *
  * @property {string} message
  * The commit message describing the changes made in the commit.
- * 
+ *
  * @property {number} [relevance]
  * An optional value indicating the relevance of the commit, such that 0 is not relevant and 1 is highly relevant.
- * 
+ *
  * @property {string[][]} [relevantLines]
  * An optional array of string arrays, where each inner array represents
  * 10 lines of content most relevant to the commit.
@@ -446,9 +556,17 @@ class GitNavigator{
 interface CommitInfo {
   hash: string;
   message: string;
-  relevance?:number;
-  relevantLines?: string[][]; 
+  relevance?: number;
+  relevantLines?: string[][];
+  comments?: Comment[];
 }
-export { GitNavigator, CommitInfo};
+
+interface Comment {
+  username: string;
+  comment: string;
+  timestamp: string;
+  id: string; // Unique identifier for the comment
+}
 
 
+export { GitNavigator, CommitInfo, Comment };
