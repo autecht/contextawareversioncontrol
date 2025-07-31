@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import { GitNavigator } from "./GitNavigator";
+import { GitNavigator, Comment } from "./GitNavigator";
 import { Viewer } from "./Viewer";
 import * as fs from "fs";
 import { File, Line } from "./types";
@@ -12,6 +12,7 @@ class Command {
   gitNavigator: GitNavigator; // GitNavigator to obtain necessary information from git repo.
   context: vscode.ExtensionContext; // this extension's ExtensionContext
   mediaFileName: string; // name of script and stylesheet without extension in media folder
+  panel: vscode.WebviewPanel | undefined; // webview panel for this command
   constructor(
     context: vscode.ExtensionContext,
     mediaFileName: string,
@@ -89,6 +90,7 @@ class Command {
       const hash: string = message.hash;
       this.gitNavigator.checkoutCommit(hash);
     }
+    
   }
 }
 
@@ -112,6 +114,7 @@ class RelevantCommitsVisualization extends Command {
       "contextawareversioncontrol." + identifier,
       () => {
         const panel = this.createWebviewPanel(identifier, title);
+        this.panel = panel;
         panel.webview.onDidReceiveMessage(this.handleMessage);
         const uris = this.getUris(panel);
         this.gitNavigator.getRelevantCommits().then((commits) => {
@@ -129,6 +132,30 @@ class RelevantCommitsVisualization extends Command {
         });
       }
     );
+  }
+  
+  handleMessage(message: any) {
+    if (message.command === `addComment`) {
+      this.gitNavigator.addCommentToCommit(message.hash, message.comment).then((updatedComments: Comment[]) => {
+        this.panel?.webview.postMessage({
+          command: "updateComments",
+          hash: message.hash,
+          comments: updatedComments,
+        });
+      });
+    }
+    if (message.command === `deleteComment`) {
+      vscode.window.showInformationMessage(
+        "Delete comment command Message received in webview with hash: " + message.hash + " and id: " + message.id
+      );
+      this.gitNavigator.deleteComment(message.hash, message.id).then((updatedComments: Comment[]) => {
+        this.panel?.webview.postMessage({
+          command: "updateComments",
+          hash: message.hash,
+          comments: updatedComments,
+        });
+      });
+    }
   }
 }
 
@@ -155,7 +182,7 @@ class RelevantCommitVisualization extends Command {
         panel.webview.onDidReceiveMessage(this.handleMessage);
         const uris = this.getUris(panel);
         this.gitNavigator
-          .getRelevantCommits(hash) // TODO: Can this just be the same command
+          .getRelevantCommits(hash) 
           .then((commits) => {
             commits = commits.sort((commit1, commit2) => {
               if (commit1.relevance === undefined) {
@@ -186,7 +213,6 @@ class LinesRelevanceVisualization extends Command {
    * Command to be pushed to extension.
    */
   command: vscode.Disposable;
-  panel: vscode.WebviewPanel | undefined;
   constructor(
     context: vscode.ExtensionContext,
     mediaFileName: string,

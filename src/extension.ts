@@ -3,7 +3,23 @@
 import * as vscode from "vscode";
 import { GitNavigator } from "./GitNavigator";
 import {RelevantCommitVisualization, RelevantCommitsVisualization, LinesRelevanceVisualization} from "./Commands";
+import {Client} from 'pg';
 
+
+function testDriver() {
+  const client = new Client({
+    user:'postgres',
+    host: 'localhost',
+    database: 'bank_test',
+    port: 5432,
+  });
+  client.connect().then(() => {
+    client.query('SELECT NOW()', (err, res) => {
+      console.log(res.rows[0]);
+      client.end();
+    });
+  });
+}
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -12,6 +28,8 @@ export function activate(context: vscode.ExtensionContext) {
   console.log(
     'Congratulations, your extension "contextawareversioncontrol" is now active!'
   );
+
+  // testDriver();
 
   const lineRelevanceVisualization = new LinesRelevanceVisualization(context, "line-relevance", "visualizeLines", "Visualize Lines");
   const commitVisualization = new RelevantCommitVisualization(context, "commit-view", "showCommit", "Show Commit");
