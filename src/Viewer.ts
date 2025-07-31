@@ -115,15 +115,17 @@ class Viewer {
               })
               .join("") +
             `</div>` +
-            `<div class = "comment-section"> ` +
-            commit.comments
-              ?.map(
-                (comment) => 
-                  `<div id = "${commit.hash}-comments" class="comment">
-                      <p><strong>${comment.username}:</strong> ${comment.comment}</p>
-                        <button class="button" onclick="deleteComment('${commit.hash}', '${comment.id}')">Delete Comment</button>
-                    </div>`).join("") +
-                  `<input type="text"  id="${commit.hash}-comment" placeholder="Add a comment"/>
+            `<div class = "comment-section"> 
+              <div id = "${commit.hash}-comments">` +
+              commit.comments
+                ?.map(
+                  (comment) => 
+                    `<div class="comment">
+                        <p><strong>${comment.username}:</strong> ${comment.comment}</p>
+                          <button class="button" onclick="deleteComment('${commit.hash}', '${comment.id}')">Delete Comment</button>
+                      </div>`).join("") +
+                      `</div> 
+                    <input type="text"  id="${commit.hash}-comment" placeholder="Add a comment"/>
                     <button type="submit" onclick="addComment('${commit.hash}')">Add Comment</button>
                     </div>` +
             `</div>`

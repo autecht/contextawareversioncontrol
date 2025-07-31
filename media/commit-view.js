@@ -10,7 +10,7 @@ window.addEventListener('message', (event) => {
       commentsContainer.innerHTML = comments.map(comment => 
         `<div class="comment">
           <p><strong>${comment.username}:</strong> ${comment.comment}</p>
-          <button class="button" onclick="deleteComment('${comment.hash}', '${comment.id}')">Delete Comment</button>
+          <button class="button" onclick="deleteComment('${hash}', '${comment.id}')">Delete Comment</button>
         </div>`).join('');
     }
   }
