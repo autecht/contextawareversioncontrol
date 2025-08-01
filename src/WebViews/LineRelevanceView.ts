@@ -1,10 +1,10 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import { metrics } from "../types";
+import { metrics } from "../utils/types";
 import ViewManager from "./ViewManager";
-import { getLineRelevance, getTrackedDirectories } from "../utils";
-import { createFiles } from "../parsers";
+import { getLineRelevance, getTrackedDirectories } from "../utils/gitServices";
+import { createFiles } from "../utils/parsers";
 
 class LineRelevaceView extends ViewManager {
   

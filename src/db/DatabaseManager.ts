@@ -1,6 +1,6 @@
 import { Client, QueryResult } from "pg";
-import { Comment } from "../types";
-import CommandExecutor from "../CommandExecutor";
+import { Comment } from "../utils/types";
+import CommandExecutor from "../commands/CommandExecutor";
 
 
 

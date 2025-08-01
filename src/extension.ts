@@ -5,7 +5,7 @@ import {Client} from 'pg';
 import LineRelevanceView from "./webviews/LineRelevanceView";
 import RelevantCommitsView from "./webviews/RelevantCommitsView";
 import DatabaseManager from "./db/DatabaseManager";
-import CommandExecutor from "./CommandExecutor";
+import CommandExecutor from "./commands/CommandExecutor";
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed

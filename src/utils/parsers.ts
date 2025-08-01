@@ -1,9 +1,5 @@
-import * as vscode from "vscode";
-import { exec } from "child_process";
-import * as util from "util";
-import { findRelevancy } from "./findRelevancy.js";
+
 import { Comment, CommitInfo, File, Line, LineRelevance, metrics } from "./types.js";
-import DatabaseManager from "./db/DatabaseManager.js";
 
 function createFiles(fileRelevances: { [fileName: string]: LineRelevance[] }): File[] {
     const files: File[] = [];
@@ -72,4 +68,4 @@ function createFile(fileName: string, lineRelevances: LineRelevance[]): File {
     return commits;
   }
 
-export { createFiles, createFile, getIndentation, parseCommits };
+export { createFiles, getIndentation, parseCommits };

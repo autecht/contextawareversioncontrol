@@ -1,10 +1,10 @@
-import CommandExecutor from "./CommandExecutor";
+import CommandExecutor from "../commands/CommandExecutor";
 import { parseCommits } from "./parsers";
 import * as vscode from "vscode";
 import { CommitInfo, LineRelevance, metrics } from "./types";
-import { findRelevancy } from "./findRelevancy";
-import DatabaseManager from "./db/DatabaseManager";
-import * as gitCommands from "./gitCommands";
+import { findRelevancy } from "../relevance/findRelevancy";
+import DatabaseManager from "../db/DatabaseManager";
+import * as gitCommands from "../commands/gitCommands";
 
 /**
  * Retrieves commits from repo and evaluates their relevance.
@@ -34,13 +34,6 @@ export async function getRelevantCommits(hash?: string): Promise<CommitInfo[]> {
   );
   return commits;
 }
-
-
-
-
-
-
-
 
 
 /**
@@ -138,48 +131,15 @@ export async function getTrackedDirectories(): Promise<string[]> {
 }
 
 /**
- * Opens the vscode diff views for files changed in a specific commit.
- *
- * @param commit - The commit information containing details such as the commit hash.
- * @returns A promise that resolves when all diff views have been opened or if no action is taken.
+ * get files changed from a commit.
  */
-export async function openChangedFileDiffs(commit: CommitInfo): Promise<void> {
-  const filesChanged = await getFilesChanged(commit);
-  if (filesChanged.length === 0) {
-    vscode.window.showInformationMessage("No files changed in this commit.");
-    return;
-  }
-  if (!CommandExecutor.workspaceRoot) {
-    console.log("No workspace root found.");
-    return;
-  }
-
-  for (const file of filesChanged) {
-    const absolute = vscode.Uri.joinPath(
-      CommandExecutor.workspaceRoot.uri,
-      file
-    );
-    const params = {
-      path: absolute.fsPath,
-      ref: commit.hash,
-    };
-    const path = absolute.path;
-
-    const gitUri = absolute.with({
-      scheme: "git",
-      path,
-      query: JSON.stringify(params),
-    });
-
-    // Open diff view
-    vscode.commands.executeCommand(
-      "vscode.diff",
-      gitUri,
-      absolute,
-      `Diff ${file}: ${commit.hash} -> present`
-    );
-  }
+export async function getFilesChanged(commit: CommitInfo) {
+  const output = await gitCommands.getFilesChangedByCommit(commit.hash);
+  const filesChanged = output.split("\n").filter((file) => file.trim() !== "");
+  return filesChanged;
 }
+
+
 
 
 
@@ -365,11 +325,3 @@ async function getCommitRecency() {
   return commitsWithRelevance;
 }
 
-/**
- * get files changed from a commit.
- */
-async function getFilesChanged(commit: CommitInfo) {
-  const output = await gitCommands.getFilesChangedByCommit(commit.hash);
-  const filesChanged = output.split("\n").filter((file) => file.trim() !== "");
-  return filesChanged;
-}
