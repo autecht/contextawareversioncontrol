@@ -3,6 +3,8 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { metrics } from "../types";
 import ViewManager from "./ViewManager";
+import { getLineRelevance, getTrackedDirectories } from "../utils";
+import { createFiles } from "../parsers";
 
 class LineRelevaceView extends ViewManager {
   
@@ -23,7 +25,7 @@ class LineRelevaceView extends ViewManager {
         panel.webview.onDidReceiveMessage(this.handleMessage);
         const uris = this.getUris(panel);
 
-        this.gitNavigator.getTrackedDirectories().then((directories) => {
+        getTrackedDirectories().then((directories) => {
           panel.webview.html = LineRelevaceView.getDirectoryListingHTML(
             uris[0],
             uris[1],
@@ -98,12 +100,11 @@ class LineRelevaceView extends ViewManager {
         return;
       }
       const adjustedDirectory = message.directory;
-      this.gitNavigator
-        .getLineRelevance(adjustedDirectory, message.metric)
+      getLineRelevance(adjustedDirectory, message.metric)
         .then((fileRelevances) => {
           console.log("File Relevances: ", fileRelevances);
 
-          const files = this.gitNavigator.createFiles(fileRelevances);
+          const files = createFiles(fileRelevances);
 
           if (this.panel === undefined) {
             console.error("Visualization panel is undefined");

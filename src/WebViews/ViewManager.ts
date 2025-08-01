@@ -1,8 +1,6 @@
 import * as vscode from "vscode";
-import { GitNavigator } from "../GitNavigator";
 
 class ViewManager {
-  gitNavigator: GitNavigator; // GitNavigator to obtain necessary information from git repo.
   context: vscode.ExtensionContext; // this extension's ExtensionContext
   mediaFileName: string; // name of script and stylesheet without extension in media folder
   panel: vscode.WebviewPanel | undefined; // webview panel for this command
@@ -10,7 +8,6 @@ class ViewManager {
     context: vscode.ExtensionContext,
     mediaFileName: string
   ) {
-    this.gitNavigator = new GitNavigator(context);
     this.context = context;
     this.mediaFileName = mediaFileName;
   }
@@ -76,8 +73,9 @@ class ViewManager {
     const panel = vscode.window.createWebviewPanel(
       identifier,
       title,
-      vscode.ViewColumn.One,
+      {viewColumn: vscode.ViewColumn.Beside, preserveFocus: true},
       {
+        
         enableScripts: true,
         localResourceRoots: [
           vscode.Uri.joinPath(this.context.extensionUri, "media"),

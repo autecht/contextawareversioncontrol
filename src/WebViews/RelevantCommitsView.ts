@@ -3,6 +3,7 @@ import { Comment } from "../types";
 import * as vscode from "vscode";
 import ViewManager from "./ViewManager";
 import DatabaseManager from "../db/DatabaseManager";
+import { getRelevantCommits } from "../utils";
 
 class RelevantCommitsView extends ViewManager {
   /**
@@ -20,11 +21,13 @@ class RelevantCommitsView extends ViewManager {
       this.command = vscode.commands.registerCommand(
         "contextawareversioncontrol." + identifier,
         (hash?) => {
+          console.log("Relevant Commits View Command Executed with hash: ", hash);
           const panel = this.createWebviewPanel(identifier, title);
           this.panel = panel;
           panel.webview.onDidReceiveMessage(this.handleMessage);
           const uris = this.getUris(panel);
-          this.gitNavigator.getRelevantCommits(hash).then((commits) => {
+          getRelevantCommits(hash).then((commits) => {
+            console.log("Relevant Commits in ViewManager: ", commits);
             commits = commits.sort((commit1, commit2) => {
               if (commit1.relevance === undefined) {
                 return 1; // commit1 is less relevant
@@ -36,6 +39,9 @@ class RelevantCommitsView extends ViewManager {
             });
   
             panel.webview.html = RelevantCommitsView.getCommitsHTML(uris[0], uris[1], commits);
+          }).catch((error) => {
+            console.error("Error fetching relevant commits: ", error);
+            vscode.window.showErrorMessage("Error fetching relevant commits: " + error.message);
           });
         }
         

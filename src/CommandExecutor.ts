@@ -3,8 +3,9 @@ import { exec } from "child_process";
 import * as util from "util";
 
 class CommandExecutor {
+  
   private static instance: CommandExecutor;
-  static context: vscode.ExtensionContext;
+  private static context: vscode.ExtensionContext;
   static workspaceRoot: vscode.WorkspaceFolder | undefined;
 
   constructor(context: vscode.ExtensionContext) {
@@ -47,6 +48,20 @@ class CommandExecutor {
       CommandExecutor.instance = new CommandExecutor(context);
     }
     return CommandExecutor.instance;
+  }
+
+  public static getContext(): vscode.ExtensionContext {
+    if (!CommandExecutor.context) {
+      throw new Error("CommandExecutor context is not initialized.");
+    }
+    return CommandExecutor.context;
+  }
+
+  static getWorkspaceRoot() {
+    if (!CommandExecutor.workspaceRoot) {
+      throw new Error("Workspace root is not set.");
+    }
+    return CommandExecutor.workspaceRoot;
   }
 }
 

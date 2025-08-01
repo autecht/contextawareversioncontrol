@@ -10,34 +10,29 @@ class DatabaseManager{
   private client: Client;
   private static instance: DatabaseManager | null = null;
 
-  constructor() {
+  private constructor() {
     this.client = new Client({
       user: "postgres",
       host: "localhost",
-      database: "contextawareversioncontrol",
+      database: "context_aware_version_control",
       password: "password",
       port: 5432,
-    });
-    this.client.connect().catch((err) => {
-      console.error("Failed to connect to the database:", err);
     });
     DatabaseManager.instance = this;
   }
 
-  public static getInstance(): DatabaseManager {
-    if (!DatabaseManager.instance) {
-      DatabaseManager.instance = new DatabaseManager();
-    }
-    return DatabaseManager.instance;
-  }
 
   public static openConnection(): void {  
     if (!DatabaseManager.instance) {
       DatabaseManager.instance = new DatabaseManager();
+      DatabaseManager.instance.client.connect().catch((err) => {
+        console.error("Failed to connect to the database:", err);
+      });
     }
-    DatabaseManager.instance.client.connect().catch((err) => {
-      console.error("Failed to connect to the database:", err);
-    });
+    else {
+      console.warn("Database connection already exists, not creating a new one.");
+    }
+    
   }
 
   public static closeConnection(): void {

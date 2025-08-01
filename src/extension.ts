@@ -1,13 +1,11 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
-import { GitNavigator } from "./GitNavigator";
 import {Client} from 'pg';
 import LineRelevanceView from "./webviews/LineRelevanceView";
 import RelevantCommitsView from "./webviews/RelevantCommitsView";
 import DatabaseManager from "./db/DatabaseManager";
 import CommandExecutor from "./CommandExecutor";
-
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -33,9 +31,8 @@ export function activate(context: vscode.ExtensionContext) {
       const line = position.line;
       const fileName = document.fileName;
       
-      const gitNavigator = new GitNavigator(context);
       
-      const stdout = await gitNavigator.executeCommand(`git blame -L ${line + 1},${line + 1} "${fileName}"`);
+      const stdout = await CommandExecutor.executeCommand(`git blame -L ${line + 1},${line + 1} "${fileName}"`);
       const hash = stdout.split(" ")[0];
       const markdown = new vscode.MarkdownString(
         `[🔍 View Commit](command:contextawareversioncontrol.showCommit?${encodeURIComponent(JSON.stringify([hash]))})`
@@ -54,6 +51,5 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
   DatabaseManager.closeConnection();
   console.log("Deactivating contextawareversioncontrol extension.");
-  // Optionally, you can also close the database connection here if needed
-  // DatabaseManager.getInstance().closeConnection();
+  
 }
