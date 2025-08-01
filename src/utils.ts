@@ -12,7 +12,7 @@ import * as gitCommands from "./gitCommands";
  * @param hash: hash of specific commit to retrieve. If undefined, retrieves all commits except initial commit.
  * @returns Promise with array of CommitInfo objects representing each commit.
  */
-async function getRelevantCommits(hash?: string): Promise<CommitInfo[]> {
+export async function getRelevantCommits(hash?: string): Promise<CommitInfo[]> {
   let commits = await getCommits(hash);
   // find relevance and relevant lines of each commit
   const linesAndRelevances = await Promise.all(
@@ -35,6 +35,174 @@ async function getRelevantCommits(hash?: string): Promise<CommitInfo[]> {
   return commits;
 }
 
+
+
+
+
+
+
+
+
+/**
+ * Analyzes the relevance of each line in files within a specified directory
+ * based on the relevance of the commits responsible for those lines.
+ *
+ * @param directory - The directory to filter files by. Only files within this directory
+ * will be processed. To include all files, remove the directory filtering logic.
+ * @param metric - The metric used to determine relevance. Can be "recency" or "other", which uses findRelevancy.
+ *
+ * @returns A promise that resolves to an object where each key is a file name and the value
+ * is an array of objects representing the relevance of each line in the file. Each object
+ * contains:
+ * - `relevance`: The relevance score of the commit responsible for the line.
+ * - `hash`: The hash of the commit responsible for the line.
+ * - `content`: The content of the line.
+ *
+ * @remarks
+ * - If a commit's relevance is undefined or not a number, it defaults to 0.
+ *
+ * @throws Will throw an error if any Git command fails.
+ */
+export async function getLineRelevance(
+  directory: string,
+  metric: string
+): Promise<{ [fileName: string]: LineRelevance[] }> {
+  let commitRelevances: { [hash: string]: number } = {};
+  let allRelevances;
+  if (metric === metrics.recency) {
+    allRelevances = await getCommitRecency();
+  } else {
+    allRelevances = await getRelevantCommits();
+  }
+
+  for (const commit of allRelevances) {
+    commitRelevances[commit.hash] =
+      commit.relevance === undefined || Number.isNaN(commit.relevance)
+        ? 0
+        : commit.relevance;
+  }
+  let fileRelevances: { [fileName: string]: LineRelevance[] } = {};
+  const fileNamesOut = await gitCommands.getTrackedFiles();
+  for (const filename of fileNamesOut.split("\n")) {
+    let parts = filename.split("/");
+    parts.pop();
+    const directoryName = parts.join("/");
+    if (directoryName !== directory) {
+      continue; // TODO: remove this line to get all files
+    }
+    if (filename.trim() === "") {
+      continue;
+    }
+    const hashesAndContent = await getResponsibleCommitsAndContent(filename);
+
+    const relevanceOfResponsibleCommits = hashesAndContent.map((object) => {
+      const relevance =
+        commitRelevances[object.hash] === undefined
+          ? 0
+          : commitRelevances[object.hash];
+      const fileRelevance = {
+        relevance: relevance,
+        hash: object.hash,
+        content: object.lineContent,
+      };
+      if (fileRelevance.content === undefined) {
+        fileRelevance.content = "";
+      }
+      return fileRelevance;
+    });
+
+    fileRelevances[filename] = relevanceOfResponsibleCommits;
+  }
+  return fileRelevances;
+}
+
+/**
+ * Retrieves a list of unique directories that contain tracked files in the Git repository.
+ *
+ * @returns A promise that resolves to an array of unique directory paths as strings, relative to project root.
+ *          Each path represents a directory containing at least one tracked file.
+ *
+ * @throws Will throw an error if the `git ls-files` command fails to execute.
+ */
+export async function getTrackedDirectories(): Promise<string[]> {
+  const fileNamesOut = await gitCommands.getTrackedFiles();
+  const fileNames = fileNamesOut.split("\n");
+  let directories = fileNames.map((fileName) => {
+    let parts = fileName.split("/");
+    parts.pop(); // Remove the last part (file name)
+    return parts.join("/");
+  });
+  directories = [...new Set(directories)];
+
+  return directories;
+}
+
+/**
+ * Opens the vscode diff views for files changed in a specific commit.
+ *
+ * @param commit - The commit information containing details such as the commit hash.
+ * @returns A promise that resolves when all diff views have been opened or if no action is taken.
+ */
+export async function openChangedFileDiffs(commit: CommitInfo): Promise<void> {
+  const filesChanged = await getFilesChanged(commit);
+  if (filesChanged.length === 0) {
+    vscode.window.showInformationMessage("No files changed in this commit.");
+    return;
+  }
+  if (!CommandExecutor.workspaceRoot) {
+    console.log("No workspace root found.");
+    return;
+  }
+
+  for (const file of filesChanged) {
+    const absolute = vscode.Uri.joinPath(
+      CommandExecutor.workspaceRoot.uri,
+      file
+    );
+    const params = {
+      path: absolute.fsPath,
+      ref: commit.hash,
+    };
+    const path = absolute.path;
+
+    const gitUri = absolute.with({
+      scheme: "git",
+      path,
+      query: JSON.stringify(params),
+    });
+
+    // Open diff view
+    vscode.commands.executeCommand(
+      "vscode.diff",
+      gitUri,
+      absolute,
+      `Diff ${file}: ${commit.hash} -> present`
+    );
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Helper functions private to this module
 async function getCommits(hash?: string): Promise<CommitInfo[]> {
   const output = await gitCommands.getLog(hash);
   return parseCommits(output);
@@ -141,108 +309,6 @@ async function getRelevaceAndLines(commits: CommitInfo[]) {
   return commitsRelevance;
 }
 
-/**
- * Analyzes the relevance of each line in files within a specified directory
- * based on the relevance of the commits responsible for those lines.
- *
- * @param directory - The directory to filter files by. Only files within this directory
- * will be processed. To include all files, remove the directory filtering logic.
- * @param metric - The metric used to determine relevance. Can be "recency" or "other", which uses findRelevancy.
- *
- * @returns A promise that resolves to an object where each key is a file name and the value
- * is an array of objects representing the relevance of each line in the file. Each object
- * contains:
- * - `relevance`: The relevance score of the commit responsible for the line.
- * - `hash`: The hash of the commit responsible for the line.
- * - `content`: The content of the line.
- *
- * @remarks
- * - If a commit's relevance is undefined or not a number, it defaults to 0.
- *
- * @throws Will throw an error if any Git command fails.
- */
-async function getLineRelevance(
-  directory: string,
-  metric: string
-): Promise<{ [fileName: string]: LineRelevance[] }> {
-  let commitRelevances: { [hash: string]: number } = {};
-  let allRelevances;
-  if (metric === metrics.recency) {
-    allRelevances = await getCommitRecency();
-  } else {
-    allRelevances = await getRelevantCommits();
-  }
-
-  for (const commit of allRelevances) {
-    commitRelevances[commit.hash] =
-      commit.relevance === undefined || Number.isNaN(commit.relevance)
-        ? 0
-        : commit.relevance;
-  }
-  let fileRelevances: { [fileName: string]: LineRelevance[] } = {};
-  const fileNamesOut = await gitCommands.getTrackedFiles();
-  for (const filename of fileNamesOut.split("\n")) {
-    let parts = filename.split("/");
-    parts.pop();
-    const directoryName = parts.join("/");
-    if (directoryName !== directory) {
-      continue; // TODO: remove this line to get all files
-    }
-    if (filename.trim() === "") {
-      continue;
-    }
-    const hashesAndContent = await getResponsibleCommitsAndContent(filename);
-
-    const relevanceOfResponsibleCommits = hashesAndContent.map((object) => {
-      const relevance =
-        commitRelevances[object.hash] === undefined
-          ? 0
-          : commitRelevances[object.hash];
-      const fileRelevance = {
-        relevance: relevance,
-        hash: object.hash,
-        content: object.lineContent,
-      };
-      if (fileRelevance.content === undefined) {
-        fileRelevance.content = "";
-      }
-      return fileRelevance;
-    });
-
-    fileRelevances[filename] = relevanceOfResponsibleCommits;
-  }
-  return fileRelevances;
-}
-
-/**
- * Retrieves a list of unique directories that contain tracked files in the Git repository.
- *
- * @returns A promise that resolves to an array of unique directory paths as strings, relative to project root.
- *          Each path represents a directory containing at least one tracked file.
- *
- * @throws Will throw an error if the `git ls-files` command fails to execute.
- */
-async function getTrackedDirectories(): Promise<string[]> {
-  const fileNamesOut = await gitCommands.getTrackedFiles();
-  const fileNames = fileNamesOut.split("\n");
-  let directories = fileNames.map((fileName) => {
-    let parts = fileName.split("/");
-    parts.pop(); // Remove the last part (file name)
-    return parts.join("/");
-  });
-  directories = [...new Set(directories)];
-
-  return directories;
-}
-
-/**
- * checkout to commit given by @param hash
- */
-async function checkoutCommit(hash: string) {
-  await gitCommands.stashChanges();
-  await gitCommands.checkoutCommit(hash);
-}
-
 async function getResponsibleCommitsAndContent(filename: string) {
   const blameOut = await gitCommands.getBlame(filename);
   const lines = blameOut.split("\n");
@@ -307,58 +373,3 @@ async function getFilesChanged(commit: CommitInfo) {
   const filesChanged = output.split("\n").filter((file) => file.trim() !== "");
   return filesChanged;
 }
-
-/**
- * Opens the vscode diff views for files changed in a specific commit.
- *
- * @param commit - The commit information containing details such as the commit hash.
- * @returns A promise that resolves when all diff views have been opened or if no action is taken.
- */
-async function openChangedFileDiffs(commit: CommitInfo): Promise<void> {
-  const filesChanged = await gitCommands.getFilesChangedSinceCommit(commit.hash);
-  if (filesChanged.length === 0) {
-    vscode.window.showInformationMessage("No files changed in this commit.");
-    return;
-  }
-  if (!CommandExecutor.workspaceRoot) {
-    console.log("No workspace root found.");
-    return;
-  }
-
-  for (const file of filesChanged) {
-    const absolute = vscode.Uri.joinPath(
-      CommandExecutor.workspaceRoot.uri,
-      file
-    );
-    const params = {
-      path: absolute.fsPath,
-      ref: commit.hash,
-    };
-    const path = absolute.path;
-
-    const gitUri = absolute.with({
-      scheme: "git",
-      path,
-      query: JSON.stringify(params),
-    });
-
-    // Open diff view
-    vscode.commands.executeCommand(
-      "vscode.diff",
-      gitUri,
-      absolute,
-      `Diff ${file}: ${commit.hash} -> present`
-    );
-  }
-}
-
-export {
-  getRelevantCommits,
-  getLineRelevance,
-  getTrackedDirectories,
-  getCommitRecency,
-  getResponsibleCommitsAndContent,
-  checkoutCommit,
-  getFilesChanged,
-  openChangedFileDiffs,
-};

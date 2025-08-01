@@ -3,7 +3,8 @@ import { Comment } from "../types";
 import * as vscode from "vscode";
 import ViewManager from "./ViewManager";
 import DatabaseManager from "../db/DatabaseManager";
-import { getRelevantCommits } from "../utils";
+import { getRelevantCommits, openChangedFileDiffs } from "../utils";
+import * as gitCommands from "../gitCommands";
 
 class RelevantCommitsView extends ViewManager {
   /**
@@ -112,7 +113,16 @@ class RelevantCommitsView extends ViewManager {
         );
         this.deleteComment(message.hash, message.id);
       }
-    }
+      if (message.command === "openDiffFile") {
+        openChangedFileDiffs(message);
+      }
+      if (message.command === "checkoutCommit") {
+        const hash: string = message.hash;
+        gitCommands.stashChanges().then(() => {
+          gitCommands.checkoutCommit(hash);
+        });
+      }
+      }
 
     async deleteComment(hash: string, id: string) {
       const updatedComments: Comment[] = await DatabaseManager.deleteComment(hash, id);
