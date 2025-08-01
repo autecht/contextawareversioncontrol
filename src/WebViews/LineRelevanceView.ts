@@ -1,7 +1,8 @@
-import ViewManager from "./ViewManager";
+
 import * as vscode from "vscode";
 import * as path from "path";
 import { metrics } from "../types";
+import ViewManager from "./ViewManager";
 
 class LineRelevaceView extends ViewManager {
   

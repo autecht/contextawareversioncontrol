@@ -2,8 +2,8 @@ import * as vscode from "vscode";
 import { exec } from "child_process";
 import * as util from "util";
 import { findRelevancy } from "./findRelevancy.js";
-import { File, Line, LineRelevance, metrics } from "./types.js";
-import { Client } from "pg";
+import { Comment, CommitInfo, File, Line, LineRelevance, metrics } from "./types.js";
+import DatabaseManager from "./db/DatabaseManager.js";
 
 /**
  * Use git commands to extract information from git repo.
@@ -252,7 +252,7 @@ class GitNavigator {
         ...commit,
         relevantLines: linesAndRelevance[idx][1],
         relevance: linesAndRelevance[idx][0] / maxRelevance,
-        comments: await this.getCommentsFromCommit(commit.hash),
+        comments: await DatabaseManager.getCommentsFromCommit(commit.hash),
       };
     }));
 
@@ -261,76 +261,7 @@ class GitNavigator {
     return commits;
   }
 
-  private async getCommentsFromCommit(commitHash: string): Promise<Comment[]> {
-    // Need hash and repository
-    const repoUrl = await this.executeCommand("git remote get-url origin");
-    const client = new Client({
-      user: "postgres",
-      host: "localhost",
-      database: "context_aware_version_control",
-      port: 5432,
-    });
-    await client.connect();
-    const query = `
-      SELECT username, comment, timestamp, id
-      FROM comments
-      WHERE commit_id = $1 AND repo_url = $2
-      ORDER BY timestamp ASC
-    `;
-    const parameters = [commitHash, repoUrl];
-    const result = await client.query(query, parameters);
-    await client.end();
-    if (result.rows.length > 0) {
-      return result.rows.map((row) => ({
-        username: row.username,
-        comment: row.comment,
-        timestamp: row.timestamp.toISOString(), // Convert to ISO string for consistency
-        id: row.id,
-      }));
-    }
-    return [];
-  }
-
-
-
-  public async deleteComment(hash: string, id: string):Promise<Comment[]> {
-    const client = new Client({
-      user: "postgres",
-      host: "localhost",
-      database: "context_aware_version_control",
-      port: 5432,
-    });
-    await client.connect();
-    const deleteQuery = `
-      DELETE FROM comments
-      WHERE id=$1
-    `;
-    const parameters = [id];
-    await client.query(deleteQuery, parameters);
-    // send message to webview
-    await client.end();
-    return await this.getCommentsFromCommit(hash);
-  }
-
-  public async addCommentToCommit(hash: string, comment: string):Promise<Comment[]> {
-    const repoUrl = await this.executeCommand("git remote get-url origin");
-    const username = (await this.executeCommand("git config user.name")).trim();
-    const client = new Client({
-      user: "postgres",
-      host: "localhost",
-      database: "context_aware_version_control",
-      port: 5432,
-    });
-    await client.connect();
-    const insert = `
-      INSERT INTO comments (username, comment, repo_url, commit_id)
-      VALUES ($1, $2, $3, $4)
-    `;
-    const parameters = [username, comment, repoUrl, hash];
-    await client.query(insert, parameters);
-    client.end();
-    return await this.getCommentsFromCommit(hash);
-  }
+  
 
   private async getResponsibleCommitsAndContent(filename: string) {
     const blameOut = await this.executeCommand(`git blame ${filename}`);
@@ -533,39 +464,5 @@ class GitNavigator {
     }
   }
 }
-
-/**
- * Represents information about a Git commit.
- *
- * @interface CommitInfo
- *
- * @property {string} hash
- * The unique hash identifier of the commit.
- *
- * @property {string} message
- * The commit message describing the changes made in the commit.
- *
- * @property {number} [relevance]
- * An optional value indicating the relevance of the commit, such that 0 is not relevant and 1 is highly relevant.
- *
- * @property {string[][]} [relevantLines]
- * An optional array of string arrays, where each inner array represents
- * 10 lines of content most relevant to the commit.
- */
-interface CommitInfo {
-  hash: string;
-  message: string;
-  relevance?: number;
-  relevantLines?: string[][];
-  comments?: Comment[];
-}
-
-interface Comment {
-  username: string;
-  comment: string;
-  timestamp: string;
-  id: string; // Unique identifier for the comment
-}
-
 
 export { GitNavigator, CommitInfo, Comment };

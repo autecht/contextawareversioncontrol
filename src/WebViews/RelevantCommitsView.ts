@@ -1,6 +1,8 @@
-import { Comment, CommitInfo } from "../GitNavigator";
+import { CommitInfo } from "../types";
+import { Comment } from "../types";
 import * as vscode from "vscode";
 import ViewManager from "./ViewManager";
+import DatabaseManager from "../db/DatabaseManager";
 
 class RelevantCommitsView extends ViewManager {
   /**
@@ -96,27 +98,40 @@ class RelevantCommitsView extends ViewManager {
   }
     handleMessage(message: any) {
       if (message.command === `addComment`) {
-        this.gitNavigator.addCommentToCommit(message.hash, message.comment).then((updatedComments: Comment[]) => {
-          this.panel?.webview.postMessage({
-            command: "updateComments",
-            hash: message.hash,
-            comments: updatedComments,
-          });
-        });
+        this.addComment(message.hash, message.comment);
       }
       if (message.command === `deleteComment`) {
         vscode.window.showInformationMessage(
           "Delete comment command Message received in webview with hash: " + message.hash + " and id: " + message.id
         );
-        this.gitNavigator.deleteComment(message.hash, message.id).then((updatedComments: Comment[]) => {
-          this.panel?.webview.postMessage({
-            command: "updateComments",
-            hash: message.hash,
-            comments: updatedComments,
-          });
-        });
+        this.deleteComment(message.hash, message.id);
       }
     }
+
+    async deleteComment(hash: string, id: string) {
+      const updatedComments: Comment[] = await DatabaseManager.deleteComment(hash, id);
+      this.updateComments(hash, updatedComments);
+    }
+
+    async addComment(hash: string, comment: string) {
+      const updatedComments: Comment[] = await DatabaseManager.addComment(hash, comment);
+      this.updateComments(hash, updatedComments);
+    }
+
+    updateComments(hash: string, comments: Comment[]) {
+      if (this.panel) {
+        this.panel.webview.postMessage({
+          command: "updateComments",
+          hash: hash,
+          comments: comments,
+        });
+      }
+      else {
+        console.error("Panel is undefined, cannot update comments.");
+      }
+    }
+
+    
 }
 
 export default RelevantCommitsView;

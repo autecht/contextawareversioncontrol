@@ -3,8 +3,10 @@
 import * as vscode from "vscode";
 import { GitNavigator } from "./GitNavigator";
 import {Client} from 'pg';
-import LineRelevanceView from "./WebViews/LineRelevanceView";
-import RelevantCommitsView from "./WebViews/RelevantCommitsView";
+import LineRelevanceView from "./webviews/LineRelevanceView";
+import RelevantCommitsView from "./webviews/RelevantCommitsView";
+import DatabaseManager from "./db/DatabaseManager";
+import CommandExecutor from "./CommandExecutor";
 
 
 // This method is called when your extension is activated
@@ -15,9 +17,8 @@ export function activate(context: vscode.ExtensionContext) {
   console.log(
     'Congratulations, your extension "contextawareversioncontrol" is now active!'
   );
-
-  // testDriver();
-
+  CommandExecutor.getInstance(context);
+  DatabaseManager.openConnection();
   const lineRelevanceVisualization = new LineRelevanceView(context, "line-relevance", "visualizeLines", "Visualize Lines");
   const commitVisualization = new RelevantCommitsView(context, "commit-view", "showCommit", "Show Commit");
   const commitsVisualization = new RelevantCommitsView(context, "commit-view", "showCommits", "Show Commits");
@@ -46,13 +47,13 @@ export function activate(context: vscode.ExtensionContext) {
       return new vscode.Hover(markdown);
     }
   });
-
-  
- 
-
   context.subscriptions.push(hoverProvider);
-  
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+  DatabaseManager.closeConnection();
+  console.log("Deactivating contextawareversioncontrol extension.");
+  // Optionally, you can also close the database connection here if needed
+  // DatabaseManager.getInstance().closeConnection();
+}
