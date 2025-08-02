@@ -111,6 +111,7 @@ class LineRelevaceView extends ViewManager {
             return;
           }
           this.panel.webview.postMessage({
+            command: "openDirectory",
             directory: message.directory,
             fileRelevances: fileRelevances,
             files: files,
