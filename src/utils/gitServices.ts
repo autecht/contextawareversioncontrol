@@ -6,13 +6,15 @@ import { findRelevancy } from "../relevance/findRelevancy";
 import DatabaseManager from "../db/DatabaseManager";
 import * as gitCommands from "../commands/gitCommands";
 
+
+// == Exported functions ==
 /**
  * Retrieves commits from repo and evaluates their relevance.
  *
- * @param hash: hash of specific commit to retrieve. If undefined, retrieves all commits except initial commit.
- * @returns Promise with array of CommitInfo objects representing each commit.
+ * @param hash: hash of specific commit to retrieve. If undefined, retrieves all commits.
+ * @returns Promise with array of CommitInfo objects representing each commit, its relevance, and the most relevant lines changed in the commit
  */
-export async function getRelevantCommits(hash?: string): Promise<CommitInfo[]> {
+export async function getCommitsAndRelevances(hash?: string): Promise<CommitInfo[]> {
   let commits = await getCommits(hash);
   // find relevance and relevant lines of each commit
   const linesAndRelevances = await Promise.all(
@@ -65,7 +67,7 @@ export async function getLineRelevance(
   if (metric === metrics.recency) {
     allRelevances = await getCommitRecency();
   } else {
-    allRelevances = await getRelevantCommits();
+    allRelevances = await getCommitsAndRelevances();
   }
 
   for (const commit of allRelevances) {
@@ -131,7 +133,10 @@ export async function getTrackedDirectories(): Promise<string[]> {
 }
 
 /**
- * get files changed from a commit.
+ * get files changed by a commit
+ *
+ * @param CommitInfo commit: commit responsible for changes
+ * @returns array of paths to files changed by commit
  */
 export async function getFilesChanged(commit: CommitInfo) {
   const output = await gitCommands.getFilesChangedByCommit(commit.hash);
@@ -151,23 +156,22 @@ export async function getFilesChanged(commit: CommitInfo) {
 
 
 
+// == Helper functions private to this module ==
 
-
-
-
-
-
-
-
-
-
-
-// Helper functions private to this module
+/**
+ * @param hash: hash of commit to retrieve, all commits retrieved if no such hash
+ * @returns CommitInfo[] objects representing commits without relevance evaluated
+ */
 async function getCommits(hash?: string): Promise<CommitInfo[]> {
   const output = await gitCommands.getLog(hash);
   return parseCommits(output);
 }
 
+/**
+ * Writes commits and author responsible for each line in file in format "<hash> (<author> <DateTime>) <lineNumber> <line>" to temporary file
+ *
+ * @param filesChanged: array of relative paths to files being evaluated
+ */
 async function writeResponsibleAuthors(filesChanged: string[]) {
   // write authors responsible
   for (const filePath of filesChanged.slice(0, filesChanged.length - 1)) {
@@ -191,7 +195,11 @@ async function writeResponsibleAuthors(filesChanged: string[]) {
   }
 }
 
-async function getFilePathsAndLocation(
+/**
+ * @param editor: active editor from vscode, used to obtain file and line cursor is at
+ * @returns glabal path of file cursor is on, relative path of file, and line number in the file the cursor is at
+ */
+async function getCursorLocation(
   editor: vscode.TextEditor | undefined
 ): Promise<[string, string, number]> {
   if (!editor) {
@@ -217,7 +225,13 @@ async function getFilePathsAndLocation(
   return [globalFilePath, relFilePath, lineNumber];
 }
 
-async function getRelevaceAndLines(commits: CommitInfo[]) {
+/**
+ * finds relevance and 10 most relevant lines for each commit
+ *
+ * @param CommitInfo[] commits: commits without relevance evaluated
+ * @returns Promise with array of Promises describing relevance of each commit and 10 most relevant lines
+ */
+async function getRelevaceAndLines(commits: CommitInfo[]): Promise<Promise<[number, string[][]]>[]> {
   const editor = vscode.window.activeTextEditor; // active editor needs to be defined before webview is created
   const commitsRelevance = commits.map(async (commit) => {
     //get just the files changed between the current and the commit
@@ -235,7 +249,7 @@ async function getRelevaceAndLines(commits: CommitInfo[]) {
     const commitMessage = await gitCommands.getCommitMessage(commit.hash);
 
     const [globalFilePath, relFilePath, lineNumber] =
-      await getFilePathsAndLocation(editor);
+      await getCursorLocation(editor);
 
     const diffOut = await gitCommands.getDiff(commit.hash);
     console.log(
@@ -269,11 +283,18 @@ async function getRelevaceAndLines(commits: CommitInfo[]) {
   return commitsRelevance;
 }
 
-async function getResponsibleCommitsAndContent(filename: string) {
+
+/**
+ * finds the commits responsible for each line of a file
+ *
+ * @param filename relative path to file being evaluated
+ * @returns Promise with array of objects corresponding to lines in file, 
+ *    where hash details commit responsible for the line and lineContent is the content of the line
+ */
+async function getResponsibleCommitsAndContent(filename: string): Promise<{ hash: string; lineContent: string; }[]> {
   const blameOut = await gitCommands.getBlame(filename);
   const lines = blameOut.split("\n");
   // line example: ^9e819ea (github-classroom[bot] 2025-01-10 02:13:35 +0000 29)     config = util.load_config(configYamlPath + configFile)
-  // wan to keep everything after 29) for line content
   const content = lines.map((line) => line.split(/\d+\)/));
   const hashesAndContent = content.map((line) => {
     const hash = line[0].split(" ")[0];
@@ -289,9 +310,9 @@ async function getResponsibleCommitsAndContent(filename: string) {
 }
 
 /**
- * Retrieves the recency of commits in the repo as a number between 0 and 1.
+ * Retrieves the recency of commits in the repo as a number between 0 and 1, where 1 is the most recent commit and 0 is the least recent.
  *
- * @returns A promise that resolves to an array of CommitInfo objects with their relevance scores.
+ * @returns A promise that resolves to an array of CommitInfo objects with their recency scores.
  *
  * @throws Will throw an error if any Git command fails.
  */

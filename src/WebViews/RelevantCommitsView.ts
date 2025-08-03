@@ -29,7 +29,7 @@ class RelevantCommitsView extends ViewManager {
         panel.webview.onDidReceiveMessage(this.handleMessage);
         const uris = this.getUris(panel);
         relevanceUtils
-          .getRelevantCommits(hash)
+          .getCommitsAndRelevances(hash)
           .then((commits) => {
             console.log("Relevant Commits in ViewManager: ", commits);
             commits = commits.sort((commit1, commit2) => {
