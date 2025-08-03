@@ -5,9 +5,11 @@ import CommandExecutor from "../commands/CommandExecutor";
 
 
 
-
+/**
+ * Singleton class to connect and query to database.
+ */
 class DatabaseManager{
-  private client: Client;
+  private client: Client; // postgres client
   private static instance: DatabaseManager | null = null;
 
   private constructor() {
@@ -22,6 +24,9 @@ class DatabaseManager{
   }
 
 
+  /**
+   * Create new instance and connect to database.
+   */
   public static openConnection(): void {  
     if (!DatabaseManager.instance) {
       DatabaseManager.instance = new DatabaseManager();
@@ -35,6 +40,9 @@ class DatabaseManager{
     
   }
 
+  /**
+   * Close connection to database and remove instance.
+   */
   public static closeConnection(): void {
     if (DatabaseManager.instance) {
       DatabaseManager.instance.client.end().catch((err) => {
@@ -44,6 +52,13 @@ class DatabaseManager{
     }
   }
 
+  /**
+   * Perform query or update on database and return result
+   *
+   * @param query parameterized query string
+   * @param parameters parameters to query string
+   * @returns QueryResult which is result of query on database
+   */
   public static async query(query: string, parameters: any[]): Promise<QueryResult<any>> {
     if (!DatabaseManager.instance) {
       throw new Error("Database connection is not established.");
@@ -51,6 +66,13 @@ class DatabaseManager{
     return await DatabaseManager.instance.client.query(query, parameters);
   }
 
+  /**
+   * Delete a comment from the database.
+   *
+   * @param hash hash of commit comment was deleted from
+   * @param commentId id of comment to be deleted in database
+   * @returns updated comments of commit from database
+   */
   public static async deleteComment(hash: string, commentId: string): Promise<Comment[]> {
     const query = "DELETE FROM comments WHERE id = $1";
     const parameters = [commentId];
@@ -58,7 +80,14 @@ class DatabaseManager{
     return await DatabaseManager.getCommentsFromCommit(hash);
   }
 
-  public static async addComment(hash: string, commentId: string): Promise<Comment[]> {
+  /**
+   * Add a comment to the database.
+   *
+   * @param hash hash of commit comment will be added to
+   * @param comment text of comment to be added to
+   * @returns updated comments of comment from database
+   */
+  public static async addComment(hash: string, comment: string): Promise<Comment[]> {
     const repoUrl = await CommandExecutor.executeCommand("git remote get-url origin");
     const username = (await CommandExecutor.executeCommand("git config user.name")).trim();
     
@@ -66,11 +95,17 @@ class DatabaseManager{
       INSERT INTO comments (username, comment, repo_url, commit_id)
       VALUES ($1, $2, $3, $4)
     `;
-    const parameters = [username, commentId, repoUrl, hash];
+    const parameters = [username, comment, repoUrl, hash];
     await DatabaseManager.query(insert, parameters);
     return await DatabaseManager.getCommentsFromCommit(hash);
   }
 
+  /**
+   * Get comments posted under a commit
+   *
+   * @param commitHash hash of commit with comments
+   * @returns Promise with comments associeted with commitHash
+   */
   public static async getCommentsFromCommit(commitHash: string): Promise<Comment[]> {
     // Need hash and repository
     const repoUrl = await CommandExecutor.executeCommand("git remote get-url origin");
