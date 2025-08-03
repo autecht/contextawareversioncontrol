@@ -6,9 +6,12 @@ import ViewManager from "./ViewManager";
 import { getLineRelevance, getTrackedDirectories } from "../utils/gitServices";
 import { createFiles } from "../utils/parsers";
 
+/**
+ * Manages webview for Line Relevance Visualization. Creates command and handles messages.
+ */
 class LineRelevaceView extends ViewManager {
   
-  command: vscode.Disposable; // command to register this view
+  command: vscode.Disposable; // command to register this webview
   constructor(
     context: vscode.ExtensionContext,
     mediaFileName: string,
@@ -24,7 +27,6 @@ class LineRelevaceView extends ViewManager {
         this.panel = panel;
         panel.webview.onDidReceiveMessage(this.handleMessage);
         const uris = this.getUris(panel);
-
         getTrackedDirectories().then((directories) => {
           panel.webview.html = LineRelevaceView.getDirectoryListingHTML(
             uris[0],

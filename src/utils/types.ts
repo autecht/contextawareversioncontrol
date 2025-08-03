@@ -1,35 +1,59 @@
 
-interface Line { // line of a file
-  relevance: number; 
-  hash: string; 
-  content: string
+/**
+ * Single line in a file
+ */
+interface Line {
+  relevance: number; // relevance of line as evaluated by getRelevancy()
+  hash: string; // hash of commit responsible for line
+  content: string // text in line
   indent: number; // number of leading spaces or tabs
 }
 
+/**
+ * Representation of single file
+ */
 interface File {
-  fileName:string;
-  relevance: number; // TODO: Should prbably change to include recency
-  lines: Line[];
+  fileName:string; // path to file
+  relevance: number; // average relevance of each line in file
+  lines: Line[]; // relevance, commit responsible, text, and level of indentation of each line in file
   indentations: number[]; // array of distinct indentations in the file
 }
 
+/**
+ * Relevance of a line in a file
+ */
 type LineRelevance = {
-  relevance: number;
-  hash: string;
-  content: string;
+  relevance: number; // relevance of line as evaluated by getRelevancy()
+  hash: string; // commit responsible for commit
+  content: string; // text in line
 }
 
+/**
+ * metrics available to evaluate relevance
+ */
 enum metrics {
   recency = "recency",
-  relevance = "relevance",}
+  relevance = "relevance",
+}
 
-export { File, Line, LineRelevance, metrics };
-export interface Comment {
+/**
+ * Comment posted to database
+ *
+ * @interface Comment
+ * 
+ * @property {string} username git username of user who posted comment
+ * @property {string} comment text of comment posted
+ * @property {string} timestamp ISO string representing time comment was posted
+ * @property {string} id unique id of comment in database 
+*/
+interface Comment {
   username: string;
   comment: string;
   timestamp: string;
   id: string; // Unique identifier for the comment
-}/**
+}
+
+/**
  * Represents information about a Git commit.
  *
  * @interface CommitInfo
@@ -47,11 +71,13 @@ export interface Comment {
  * An optional array of string arrays, where each inner array represents
  * 10 lines of content most relevant to the commit.
  */
-export interface CommitInfo {
+interface CommitInfo {
   hash: string;
   message: string;
   relevance?: number;
   relevantLines?: string[][];
   comments?: Comment[];
 }
+
+export { File, Line, LineRelevance, metrics, Comment, CommitInfo };
 

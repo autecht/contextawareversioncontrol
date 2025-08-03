@@ -1,5 +1,9 @@
 import * as vscode from "vscode";
 
+
+/**
+ * Manages a webview. Helps create initial HTML and handles messages from webview.
+ */
 class ViewManager {
   context: vscode.ExtensionContext; // this extension's ExtensionContext
   mediaFileName: string; // name of script and stylesheet without extension in media folder
@@ -92,9 +96,7 @@ class ViewManager {
    * @param message - The message object containing the command and any associated data.
    *
    * Supported commands:
-   * - `openDiffFile`: Opens the diff view for changed files using the `gitNavigator`.
-   * - `checkoutCommit`: Checks out a specific commit by its hash and displays an information message.
-   *   - `message.hash` (string): The hash of the commit to be checked out.
+   * - no supported commands
    */
   handleMessage(message: any) {
   }

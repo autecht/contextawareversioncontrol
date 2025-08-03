@@ -7,6 +7,10 @@ import * as relevanceUtils from "../utils/gitServices";
 import * as gitCommands from "../commands/gitCommands";
 import CommandExecutor from "../commands/CommandExecutor";
 
+/**
+ * Manages webview for Relevant Commits or Relevant Commit visualization.
+ * Creates command to register with extension and handles messages from webview.
+ */
 class RelevantCommitsView extends ViewManager {
   /**
    * Disposable to be pushed to extension.
@@ -118,6 +122,19 @@ class RelevantCommitsView extends ViewManager {
       innerHTML
     );
   }
+
+  /**
+   * Handles incoming messages and executes corresponding commands.
+   *
+   * @param message - The message object containing the command and any associated data.
+   *
+   * Supported commands:
+   * - `addComment`: Adds comment to commit to database and sends updated comments to webview.
+   * - `deleteComment`: Deletes comment from database and sends updated comments to webview.
+   * - `openDiffFile`: Opens the diff view for changed files using the `gitNavigator`.
+   * - `checkoutCommit`: Checks out a specific commit by its hash and displays an information message.
+   *   - `message.hash` (string): The hash of the commit to be checked out.
+   */
   handleMessage(message: any) {
     if (message.command === `addComment`) {
       this.addComment(message.hash, message.comment);
@@ -191,6 +208,13 @@ class RelevantCommitsView extends ViewManager {
     }
   }
 
+
+  /**
+   * Delete comment from database and send updated comments under commit to webview.
+   *
+   * @param hash hash of commit comment was posted under
+   * @param comment comment to be deleted from database
+   */
   async deleteComment(hash: string, id: string) {
     const updatedComments: Comment[] = await DatabaseManager.deleteComment(
       hash,
@@ -199,6 +223,12 @@ class RelevantCommitsView extends ViewManager {
     this.updateComments(hash, updatedComments);
   }
 
+  /**
+   * Add comment to database and send updated comments under commit to webview.
+   *
+   * @param hash hash of commit comment was posted under
+   * @param comment comment to be added to database
+   */
   async addComment(hash: string, comment: string) {
     const updatedComments: Comment[] = await DatabaseManager.addComment(
       hash,
@@ -207,6 +237,12 @@ class RelevantCommitsView extends ViewManager {
     this.updateComments(hash, updatedComments);
   }
 
+  /**
+   * Send updated comments under a commit to webview
+   *
+   * @param hash: hash of commit to send to webview
+   * @param comments: comments to be sent to webview
+   */
   updateComments(hash: string, comments: Comment[]) {
     if (this.panel) {
       this.panel.webview.postMessage({
