@@ -1,59 +1,47 @@
-# contextawareversioncontrol README
+# Context Aware Version Control README
 
-This is the README for your extension "contextawareversioncontrol". After writing up a brief description, we recommend including the following sections.
+This is Context Aware Version Control, an extension designed to help you easily navigate and understand git repositories. It uses context such as changes since the last commit, authors responsible for changes, and the user's active location to display commits relevant to the user and visualize the relevance of commits responsible for each line of the repository.
+
+## Running The Extension
+1. Clone or open this repository in VS Code.
+2. Press `F5` to launch the Extension Development Host with your extension activated.
+3. Your extension will be loaded in the new window, ready for testing and development.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+### Relevance Metrics
 
-For example if there is an image subfolder under your extension project workspace:
+The extension is centered around relevance metrics to determine the relevance to the user of commits and the individual changes they consist of. The metrics are as follows:
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Time: how recent the commit is relative to other commits in the repository.
+2. Location: how close change was to current location of user's text cursor. If the change is in a different file, then this metric is 0.
+3. Author: how consistently author of the commit matches the authors responsible for commits in the file the user is focusing on, scaled by number of lines in the file. For example, this metric would be incremented if the the author of the commit was `abc` and the author responsible for the first line in the file the user is focused on was also `abc`.
+4. Commit Message Semantic Similarity: how often tokens from the commit message appeared near the current location of the user's text cursor (+/- 20 lines from the cursor).
+5. Commit Changes Semantic Similarity: how often tokens near the current location of the user's text cursor appeared in changes made by the commit.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+### Relevant Commits
+
+### Responsible Commit Navigation
+
+### Line Relevance Visualization
+
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+This extension relies on a database to store user comments. Currently, it connects to a local database you need to initialize.
 
-## Extension Settings
+First, make sure you've downloaded PostgreSQL. You can use the installers [here](https://www.postgresql.org/download/).
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+Now, open a terminal in the `db` folder in `/src/db`. To open postgres, run the command `psql -U postgres` This will open an interactive terminal -- you should see `postgres=#`.
 
-For example:
+Next, from the interactive terminal, create the database by typing `CREATE DATABASE context_aware_version_control;`.
 
-This extension contributes the following settings:
+You can connect to the database by typing `\c context_aware_version_control` -- now you should see `context_aware_version_control=#`.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+Finally, create the database schema to store comments by typing `\i schema.sql`.
 
-## Known Issues
+That's it! If you type `\dt`, you should see a "comments" table. To exit the interactive terminal, type `exit`.
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
 
 ## Working with Markdown
 
@@ -62,10 +50,3 @@ You can author your README using Visual Studio Code. Here are some useful editor
 * Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
 * Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
 * Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
