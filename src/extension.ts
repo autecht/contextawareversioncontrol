@@ -7,16 +7,20 @@ import RelevantCommitsView from "./webviews/RelevantCommitsView";
 import DatabaseManager from "./db/DatabaseManager";
 import CommandExecutor from "./commands/CommandExecutor";
 
+
+let extensionContext: vscode.ExtensionContext;
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  extensionContext = context;
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log(
     'Congratulations, your extension "contextawareversioncontrol" is now active!'
   );
   CommandExecutor.getInstance(context);
-  DatabaseManager.openConnection();
+  DatabaseManager.openConnection(context);
   const lineRelevanceVisualization = new LineRelevanceView(context, "line-relevance", "visualizeLines", "Visualize Lines");
   const commitVisualization = new RelevantCommitsView(context, "commit-view", "showCommit", "Show Commit");
   const commitsVisualization = new RelevantCommitsView(context, "commit-view", "showCommits", "Show Commits");
@@ -26,6 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
     commitsVisualization.command
   );
 
+  // register hoverProvider with commit reponsible for line being hovered over and link to view commit in RelevantCommit webview
   const hoverProvider = vscode.languages.registerHoverProvider({ scheme: 'file' }, {
     async provideHover(document, position, token) {
       const line = position.line;
@@ -52,4 +57,8 @@ export function deactivate() {
   DatabaseManager.closeConnection();
   console.log("Deactivating contextawareversioncontrol extension.");
   
+}
+
+export function getExtensionContext() {
+  return extensionContext;
 }

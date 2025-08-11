@@ -1,35 +1,46 @@
-import { Client, QueryResult } from "pg";
+import { Client, Connection, QueryResult } from "pg";
 import { Comment } from "../utils/types";
 import CommandExecutor from "../commands/CommandExecutor";
-
+import * as vscode from 'vscode';
+import { resolve } from "path";
 
 
 
 /**
- * Singleton class to connect and query to database.
+ * Singleton class to connect and query to database. Must be called after extension is activated.
  */
 class DatabaseManager{
   private client: Client; // postgres client
   private static instance: DatabaseManager | null = null;
 
-  private constructor() {
+  private constructor(context: vscode.ExtensionContext) {
+    const path = resolve(context.extensionPath, ".env.sample");
+    require("dotenv").config({
+      path: path
+    });
+    console.log(".env values: ", {
+      user: process.env.USER,
+      host: process.env.HOST,
+      database: process.env.DATABASE,
+      port: process.env.PORT
+    });
     this.client = new Client({
-      user: "postgres",
-      host: "localhost",
-      database: "context_aware_version_control",
-      password: "password",
-      port: 5432,
+      user: process.env.USER,
+      host: process.env.HOST,
+      database: process.env.DATABASE,
+      port: parseInt(process.env.PORT?process.env.PORT:""),
     });
     DatabaseManager.instance = this;
   }
 
 
+
   /**
    * Create new instance and connect to database.
    */
-  public static openConnection(): void {  
+  public static openConnection(context: vscode.ExtensionContext): void {  
     if (!DatabaseManager.instance) {
-      DatabaseManager.instance = new DatabaseManager();
+      DatabaseManager.instance = new DatabaseManager(context);
       DatabaseManager.instance.client.connect().catch((err) => {
         console.error("Failed to connect to the database:", err);
       });
@@ -128,6 +139,13 @@ class DatabaseManager{
     return [];
   }
 
+
+  public getDatabase() {
+    return this.client.database;
+  }
+  public static getDatabase() {
+    return DatabaseManager.instance?.getDatabase();
+  }
 
 }
 
