@@ -5,6 +5,10 @@
   width: fit-content;
 }
 
+.body {
+  background-color: aqua;
+}
+
 .button{
   background-color: rgb(253, 146, 64);
   border: none;

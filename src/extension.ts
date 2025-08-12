@@ -1,54 +1,43 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
-import { GitNavigator } from "./GitNavigator";
-import {RelevantCommitVisualization, RelevantCommitsVisualization, LinesRelevanceVisualization} from "./Commands";
 import {Client} from 'pg';
+import LineRelevanceView from "./webviews/LineRelevanceView";
+import RelevantCommitsView from "./webviews/RelevantCommitsView";
+import DatabaseManager from "./db/DatabaseManager";
+import CommandExecutor from "./commands/CommandExecutor";
 
 
-function testDriver() {
-  const client = new Client({
-    user:'postgres',
-    host: 'localhost',
-    database: 'bank_test',
-    port: 5432,
-  });
-  client.connect().then(() => {
-    client.query('SELECT NOW()', (err, res) => {
-      console.log(res.rows[0]);
-      client.end();
-    });
-  });
-}
+let extensionContext: vscode.ExtensionContext;
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  extensionContext = context;
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log(
     'Congratulations, your extension "contextawareversioncontrol" is now active!'
   );
-
-  // testDriver();
-
-  const lineRelevanceVisualization = new LinesRelevanceVisualization(context, "line-relevance", "visualizeLines", "Visualize Lines");
-  const commitVisualization = new RelevantCommitVisualization(context, "commit-view", "showCommit", "Show Commit");
-  const commitsVisualization = new RelevantCommitsVisualization(context, "commit-view", "showCommits", "Show Commits");
+  CommandExecutor.getInstance(context);
+  DatabaseManager.openConnection(context);
+  const lineRelevanceVisualization = new LineRelevanceView(context, "line-relevance", "visualizeLines", "Visualize Lines");
+  const commitVisualization = new RelevantCommitsView(context, "commit-view", "showCommit", "Show Commit");
+  const commitsVisualization = new RelevantCommitsView(context, "commit-view", "showCommits", "Show Commits");
   context.subscriptions.push(
     lineRelevanceVisualization.command, 
     commitVisualization.command,
     commitsVisualization.command
   );
 
+  // register hoverProvider with commit reponsible for line being hovered over and link to view commit in RelevantCommit webview
   const hoverProvider = vscode.languages.registerHoverProvider({ scheme: 'file' }, {
     async provideHover(document, position, token) {
       const line = position.line;
       const fileName = document.fileName;
       
-      const gitNavigator = new GitNavigator(context);
-      // const {stdout} = await exec(`git blame -L ${line + 1},${line + 1} ${fileName}`, (error, stdout, stderr) => {
-      // });
-      const stdout = await gitNavigator.executeCommand(`git blame -L ${line + 1},${line + 1} "${fileName}"`);
+      
+      const stdout = await CommandExecutor.executeCommand(`git blame -L ${line + 1},${line + 1} "${fileName}"`);
       const hash = stdout.split(" ")[0];
       const markdown = new vscode.MarkdownString(
         `[🔍 View Commit](command:contextawareversioncontrol.showCommit?${encodeURIComponent(JSON.stringify([hash]))})`
@@ -60,13 +49,16 @@ export function activate(context: vscode.ExtensionContext) {
       return new vscode.Hover(markdown);
     }
   });
-
-  
- 
-
   context.subscriptions.push(hoverProvider);
-  
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+  DatabaseManager.closeConnection();
+  console.log("Deactivating contextawareversioncontrol extension.");
+  
+}
+
+export function getExtensionContext() {
+  return extensionContext;
+}
