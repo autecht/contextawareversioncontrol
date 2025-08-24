@@ -2,7 +2,33 @@
 
 This is Context Aware Version Control, an extension designed to help you easily navigate and understand git repositories. It uses context such as changes since the last commit, authors responsible for changes, and the user's active location to display commits relevant to the user and visualize the relevance of commits responsible for each line of the repository.
 
-## Running The Extension
+
+## Requirements
+
+This extension relies on a database to store user comments. Currently, it connects to a local database you need to initialize.
+
+First, make sure you've downloaded PostgreSQL. You can use the installers [here](https://www.postgresql.org/download/).
+
+Now, open a terminal in the `db` folder in `/src/db`. To open postgres, run the command `psql -U postgres` This will open an interactive terminal -- you should see `postgres=#`.
+
+Next, from the interactive terminal, create the database by typing `CREATE DATABASE context_aware_version_control;`.
+
+You can connect to the database by typing `\c context_aware_version_control` -- now you should see `context_aware_version_control=#`.
+
+Finally, create the database schema to store comments by typing `\i schema.sql`.
+
+That's it! If you type `\dt`, you should see a "comments" table. To exit the interactive terminal, type `exit`.
+
+## Installation
+
+1. Download `contextawareversioncontrol-0.0.1.vsix` from the root folder of this repository.
+2. In VS Code, open the Extensions view by clicking on `Extensions` in the sidebar or entering `Ctrl+Shift+X`
+3. Click the ⋮ (More Actions) menu in the top-right.
+4. Choose “Install from VSIX…”.
+<img src="./images/install-from-VSIX.png" alt="Install from VSIX" width="20%" style="display:block;margin-left:70px">
+5. Select `contextawareversioncontrol-0.0.1.vsix` from the folder you downloaded it to.
+
+## Development
 1. Clone or open this repository in VS Code.
 2. Press `F5` to launch the Extension Development Host with your extension activated.
 3. Your extension will be loaded in the new window, ready for testing and development.
@@ -73,18 +99,4 @@ Files can be resized vertically without zooming semantically by dragging the bot
 Dragging a file over another file switches the locations of the files in the grids to allow users to focus on files important to them.
 
 
-## Requirements
 
-This extension relies on a database to store user comments. Currently, it connects to a local database you need to initialize.
-
-First, make sure you've downloaded PostgreSQL. You can use the installers [here](https://www.postgresql.org/download/).
-
-Now, open a terminal in the `db` folder in `/src/db`. To open postgres, run the command `psql -U postgres` This will open an interactive terminal -- you should see `postgres=#`.
-
-Next, from the interactive terminal, create the database by typing `CREATE DATABASE context_aware_version_control;`.
-
-You can connect to the database by typing `\c context_aware_version_control` -- now you should see `context_aware_version_control=#`.
-
-Finally, create the database schema to store comments by typing `\i schema.sql`.
-
-That's it! If you type `\dt`, you should see a "comments" table. To exit the interactive terminal, type `exit`.
